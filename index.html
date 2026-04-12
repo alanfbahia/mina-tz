@@ -1,0 +1,2499 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mina TZ — Passageiros</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+
+:root{
+  --bg:#071318;--bg2:#0A1D22;--bg3:#0D252B;--bg4:#112F37;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.13);--border3:rgba(255,255,255,0.2);
+  --text:#E8EDF5;--text2:#8A96B0;--text3:#4A5268;
+  --green:#C9952A;--green-bg:rgba(201,149,42,0.12);--green-border:rgba(201,149,42,0.4);
+  --blue:#1B8FA0;--blue-bg:rgba(27,143,160,0.12);--blue-border:rgba(27,143,160,0.35);
+  --amber:#E8A020;--amber-bg:rgba(232,160,32,0.12);--amber-border:rgba(232,160,32,0.35);
+  --red:#FF5C5C;--red-bg:rgba(255,92,92,0.1);--red-border:rgba(255,92,92,0.3);
+  --purple:#9B7FFF;--purple-bg:rgba(155,127,255,0.1);--purple-border:rgba(155,127,255,0.3);
+  --r:8px;--rl:12px;
+  --font:'IBM Plex Sans',sans-serif;--mono:'IBM Plex Mono',monospace;
+  --sidebar:228px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
+
+/* LOGIN */
+.login-screen{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:100;
+  background-image:radial-gradient(ellipse 80% 50% at 50% 0%,rgba(15,92,107,0.15) 0%,transparent 60%)}
+.login-screen.hidden{display:none}
+.login-box{width:390px;background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:36px;animation:fadeUp .35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.login-brand{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.brand-icon{width:42px;height:42px;background:linear-gradient(135deg,rgba(201,149,42,0.25),rgba(15,92,107,0.25));border:1px solid var(--green-border);border-radius:10px;display:flex;align-items:center;justify-content:center}
+.brand-icon svg{width:20px;height:20px;stroke:var(--green);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.brand-title{font-size:18px;font-weight:700;letter-spacing:-.02em}
+.brand-sub{font-size:13px;color:var(--text2);margin-bottom:28px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.field select,.field input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:10px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border .15s}
+.field select:focus,.field input:focus{border-color:var(--blue-border)}
+.field select option{background:var(--bg3)}
+.btn-login{width:100%;padding:11px;background:var(--green);border:none;border-radius:var(--r);color:#071318;font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn-login:hover{opacity:.85}
+.login-hint{font-size:11px;color:var(--text3);margin-top:12px;text-align:center}
+
+/* APP */
+.app{display:none;height:100vh;overflow:hidden}
+.app.visible{display:flex}
+
+/* SIDEBAR */
+.sidebar{width:var(--sidebar);min-width:var(--sidebar);background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;height:100vh}
+.sb-header{padding:14px 16px 12px;border-bottom:1px solid var(--border)}
+.sb-logo{font-size:15px;font-weight:700;display:flex;align-items:center;gap:9px;letter-spacing:-.01em}
+.sb-dot{width:9px;height:9px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green),0 0 16px rgba(201,149,42,0.3)}
+.sb-sub{font-size:10px;color:var(--text3);margin-top:2px;font-family:var(--mono)}
+.sb-nav{flex:1;overflow-y:auto;padding:8px 0}
+.nav-group{font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;padding:10px 16px 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;color:var(--text2);font-size:13px;transition:all .12s;border-left:2px solid transparent;margin-right:8px;border-radius:0 6px 6px 0}
+.nav-item:hover{color:var(--text);background:rgba(255,255,255,0.04)}
+.nav-item.active{color:var(--green);background:var(--green-bg);border-left-color:var(--green);font-weight:500}
+.nav-item svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.nav-item.hidden{display:none}
+.sb-footer{padding:12px 16px;border-top:1px solid var(--border)}
+.sb-user{display:flex;align-items:center;gap:9px;cursor:pointer;padding:8px;border-radius:var(--r);transition:background .12s}
+.sb-user:hover{background:rgba(255,255,255,0.04)}
+.avatar{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.avatar.master{background:var(--amber-bg);border:1px solid var(--amber-border);color:var(--amber)}
+.avatar.setor{background:var(--blue-bg);border:1px solid var(--blue-border);color:var(--blue)}
+.u-name{font-size:12px;font-weight:600}
+.u-role{font-size:10px;color:var(--text3)}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:0 24px;height:54px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--bg2);flex-shrink:0}
+.topbar-title{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.topbar-right{display:flex;align-items:center;gap:10px}
+.badge{font-size:10px;padding:3px 9px;border-radius:999px;font-weight:600;font-family:var(--mono);letter-spacing:.04em}
+.badge.master{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.badge.setor{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.content{flex:1;overflow-y:auto;padding:24px}
+
+/* PAGES */
+.page{display:none;animation:fadeIn .2s ease}
+.page.active{display:block}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:20px}
+.card-title{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin-bottom:14px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+/* METRIC */
+.metric{background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.metric-label{font-size:11px;color:var(--text3);font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px}
+.metric-value{font-size:28px;font-weight:700;font-family:var(--mono);letter-spacing:-.02em}
+.metric-value.green{color:var(--green)}
+.metric-value.blue{color:var(--blue)}
+.metric-value.amber{color:var(--amber)}
+.metric-value.purple{color:var(--purple)}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:3px}
+
+/* TABLE */
+.tbl-wrap{overflow-x:auto}
+table.tbl{width:100%;border-collapse:collapse;font-size:13px}
+table.tbl th{padding:9px 12px;text-align:left;font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);background:var(--bg3)}
+table.tbl td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--text);vertical-align:middle}
+table.tbl tr:last-child td{border-bottom:none}
+table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
+.num-cell{font-family:var(--mono);font-weight:600;color:var(--text2);font-size:12px}
+
+/* TAGS */
+.tag{display:inline-flex;align-items:center;font-size:11px;padding:3px 8px;border-radius:999px;font-weight:500;font-family:var(--mono);white-space:nowrap}
+.tag.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.tag.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.tag.blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.tag.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.tag.purple{background:var(--purple-bg);color:var(--purple);border:1px solid var(--purple-border)}
+.tag.gray{background:rgba(255,255,255,0.05);color:var(--text2);border:1px solid var(--border2)}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r);border:1px solid var(--border2);background:transparent;color:var(--text);font-family:var(--font);font-size:13px;cursor:pointer;transition:all .12s;font-weight:500;white-space:nowrap}
+.btn:hover{background:rgba(255,255,255,0.05);border-color:var(--border3)}
+.btn.green{background:var(--green);border-color:var(--green);color:#0A0F1E;font-weight:700}
+.btn.green:hover{opacity:.85}
+.btn.blue{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)}
+.btn.blue:hover{background:rgba(77,159,255,0.18)}
+.btn.red{background:var(--red-bg);border-color:var(--red-border);color:var(--red)}
+.btn.amber{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
+.btn.sm{padding:5px 10px;font-size:12px}
+.btn svg{width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+
+/* FORMS */
+.fg{display:flex;flex-direction:column;gap:5px}
+.fg label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.fi,.fs{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--r);padding:9px 12px;color:var(--text);font-family:var(--font);font-size:13px;outline:none;transition:border .15s;width:100%}
+.fi:focus,.fs:focus{border-color:var(--blue-border)}
+.fs option{background:var(--bg3)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.full{grid-column:1/-1}
+
+/* ── PASSENGER LIST ── */
+.pax-container{max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);margin-top:8px}
+.pax-row{border-bottom:1px solid var(--border);cursor:pointer;user-select:none}
+.pax-row:last-child{border-bottom:none}
+/* top line */
+.pax-top{display:flex;align-items:center;gap:10px;padding:10px 14px;transition:background .1s}
+.pax-row:hover .pax-top{background:rgba(255,255,255,0.03)}
+.pax-row.sel .pax-top{background:var(--green-bg)}
+/* checkbox */
+.pax-chk{width:17px;height:17px;border-radius:4px;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;flex-shrink:0;background:var(--bg3);transition:all .12s;pointer-events:none}
+.pax-row.sel .pax-chk{background:var(--green);border-color:var(--green)}
+.chk-svg{width:10px;height:10px;stroke:#0A0F1E;fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;display:none}
+.pax-row.sel .chk-svg{display:block}
+.pax-lbl{font-size:13px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pax-row.sel .pax-lbl{color:var(--green);font-weight:500}
+.pax-default{font-size:11px;color:var(--text3);font-family:var(--mono);flex-shrink:0}
+/* confirm row - AMBER highlight */
+.pax-confirm{display:none;padding:8px 14px 12px 42px;background:rgba(255,181,71,0.05);border-top:1px solid var(--amber-border);gap:10px;align-items:center;flex-wrap:wrap}
+.pax-row.sel .pax-confirm{display:flex}
+.confirm-lbl{font-size:11px;font-weight:600;color:var(--amber);display:flex;align-items:center;gap:5px;white-space:nowrap;flex-shrink:0}
+.confirm-lbl svg{width:13px;height:13px;stroke:var(--amber);fill:none;stroke-width:2;stroke-linecap:round}
+.pax-confirm .fs{flex:1;min-width:130px;font-size:12px;padding:6px 10px;border-color:var(--amber-border)}
+.pax-confirm .fi{flex:1.5;min-width:150px;font-size:12px;padding:6px 10px;border-color:var(--amber-border)}
+
+/* TABS */
+.tab-bar{display:flex;border-bottom:1px solid var(--border);margin-bottom:18px}
+.tab{padding:10px 18px;font-size:13px;font-weight:500;cursor:pointer;color:var(--text2);border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .12s}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--green);border-bottom-color:var(--green)}
+
+/* SETOR GRID */
+.setor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;margin-bottom:20px}
+.setor-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--rl);padding:16px;cursor:pointer;transition:all .15s;position:relative}
+.setor-card:hover{border-color:var(--border2);background:var(--bg3);transform:translateY(-1px)}
+.sc-name{font-size:13px;font-weight:600;margin-bottom:4px}
+.sc-count{font-size:12px;color:var(--text3);font-family:var(--mono)}
+.sc-sub{font-size:11px;color:var(--text3);margin-top:6px;line-height:1.6}
+.sc-badge{position:absolute;top:10px;right:10px;font-size:10px;padding:2px 7px;border-radius:999px;background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border);font-family:var(--mono)}
+
+/* MISC */
+.divider{height:1px;background:var(--border);margin:16px 0}
+.alert{padding:10px 14px;border-radius:var(--r);font-size:13px}
+.alert.green{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.alert.red{background:var(--red-bg);color:var(--red);border:1px solid var(--red-border)}
+.alert.blue{background:var(--blue-bg);color:var(--blue);border:1px solid var(--blue-border)}
+.alert.amber{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-border)}
+.flex{display:flex;align-items:center;gap:10px}
+.flex-between{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.mb8{margin-bottom:8px}.mb12{margin-bottom:12px}.mb16{margin-bottom:16px}.mb20{margin-bottom:20px}
+.text2{color:var(--text2)}.text3{color:var(--text3)}
+.mono{font-family:var(--mono)}
+.hidden{display:none!important}
+.section-title{font-size:17px;font-weight:700;margin-bottom:4px;letter-spacing:-.02em}
+.section-sub{font-size:13px;color:var(--text2);margin-bottom:20px}
+.pending-grid{display:flex;flex-wrap:wrap;gap:6px}
+.pending-pill{font-size:11px;padding:4px 10px;border-radius:999px;background:var(--bg3);border:1px solid var(--border);color:var(--text2);font-family:var(--mono)}
+.dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot.green{background:var(--green);box-shadow:0 0 6px var(--green)}
+
+@media(max-width:768px){
+  .sidebar{width:56px;min-width:56px}
+  .sb-sub,.nav-item span,.u-name,.u-role,.nav-group,.sb-logo span:last-child{display:none}
+  .nav-item{justify-content:center;padding:10px;margin-right:0}
+  .nav-item svg{width:18px;height:18px}
+  .sb-user{justify-content:center}
+  .grid2,.grid4,.form-grid{grid-template-columns:1fr}
+}
+
+/* Extras para tela de troca de senha e gestão de usuários */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:200}
+.modal-overlay.hidden{display:none}
+.modal-box{background:var(--bg2);border:1px solid var(--border2);border-radius:16px;padding:32px;width:420px;animation:fadeUp .3s ease}
+.modal-title{font-size:16px;font-weight:700;margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--text2);margin-bottom:20px}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.status-dot.ativo{background:var(--green)}
+.status-dot.inativo{background:var(--red)}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid var(--border2);border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;z-index:300}
+.loading-overlay.hidden{display:none}
+.realtime-badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--green-bg);color:var(--green);border:1px solid var(--green-border);font-family:var(--mono)}
+.realtime-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse 1.5s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+</style>
+</head>
+<body>
+
+<!-- LOADING INICIAL -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="spinner" style="width:32px;height:32px;border-width:3px"></div>
+  <div style="color:var(--text2);font-size:13px">Conectando ao sistema...</div>
+</div>
+
+<!-- MODAL: TROCAR SENHA (primeiro acesso) -->
+<div class="modal-overlay hidden" id="modalTrocarSenha">
+  <div class="modal-box">
+    <div class="modal-title">Bem-vindo! Crie sua senha</div>
+    <div class="modal-sub">Por segurança, você precisa criar uma nova senha antes de continuar.</div>
+    <div class="field" style="margin-bottom:14px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Nova senha</label>
+      <input type="password" id="novaSenha" class="fi" placeholder="Mínimo 8 caracteres">
+    </div>
+    <div class="field" style="margin-bottom:20px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Confirmar senha</label>
+      <input type="password" id="confirmarSenha" class="fi" placeholder="Repita a nova senha">
+    </div>
+    <button class="btn-login" onclick="salvarNovaSenha()">Salvar e entrar no sistema</button>
+    <div id="alertTrocarSenha" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- MODAL: RESET DE SENHA -->
+<div class="modal-overlay hidden" id="modalResetSenha">
+  <div class="modal-box">
+    <div class="modal-title">Resetar senha</div>
+    <div class="modal-sub" id="resetSenhaSub">Defina uma nova senha temporária para o usuário.</div>
+    <input type="hidden" id="resetUserId">
+    <div class="field" style="margin-bottom:20px">
+      <label style="display:block;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">Nova senha temporária</label>
+      <input type="text" id="resetSenhaValor" class="fi" placeholder="Ex: usuario123">
+    </div>
+    <div class="flex">
+      <button class="btn green" onclick="confirmarResetSenha()">Confirmar reset</button>
+      <button class="btn" onclick="fecharModalReset()">Cancelar</button>
+    </div>
+    <div id="alertReset" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<!-- LOGIN -->
+<div class="login-screen" id="loginScreen">
+  <div class="login-box">
+    <div class="login-brand" style="justify-content:center;margin-bottom:20px;background:transparent">
+      <svg id="logo_login" style="height:62px;width:auto;display:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #ffffff;
+      }
+
+      .cls-2 {
+        fill: #c2932d;
+      }
+    </style>
+  </defs>
+  <path class="cls-2" d="M290.02,253.06c0-12.59-6.72-24.22-17.62-30.52l-92.01-53.12c-10.9-6.29-24.34-6.29-35.24,0l-92.01,53.12c-10.9,6.29-17.62,17.93-17.62,30.52v106.25c0,12.59,6.72,24.22,17.62,30.52l92.01,53.12c10.9,6.29,24.34,6.29,35.24,0l92.01-53.12c10.9-6.29,17.62-17.93,17.62-30.52v-106.25ZM246.27,272.05c0,4.11-3.33,7.43-7.43,7.43h-98.09c-.33,0-.65.02-.98.06-3.23.45-19.78,3.77-19.78,24.43s16.57,24.79,19.78,25.23c.32.04.64.06.96.06h65.07s8.96.62,8.96,9.76c0,9.94-8.96,9.67-8.96,9.67h-65.6c-.32,0-.62-.02-.94-.06-4.56-.58-38.09-6.23-38.09-46.26,0-29.99,27.42-40.55,37.8-40.55h82.28c4.17,0,7.53-3.44,7.43-7.61l-.09-3.94c-.1-4.04-3.39-7.26-7.43-7.26h-82.99c-26.36,0-53.78,29.99-53.78,59.37,0,44.64,32.05,61.22,52.45,62.83,17.98,1.42,64.88.57,82.98.17,4.04-.09,7.27-3.39,7.27-7.43v-35.35c0-4.11-3.33-7.43-7.43-7.43h-37.29s-10.03.35-10.03-9.58,10.03-9.32,10.03-9.32l55.99.47c4.08.03,7.37,3.35,7.37,7.43v74.52c0,4.05-3.23,7.36-7.28,7.43-20.83.37-80.61,1.28-103.2-.14-27.61-1.74-70.28-20.32-70.28-85.46,0-41.62,41.26-75.16,70.28-74.9,8.22.08,80.1.27,103.61.34,4.1.01,7.41,3.34,7.41,7.43v38.66Z"/>
+  <g>
+    <path class="cls-1" d="M616.28,288.33h23.72v41.73c0,.47.38.86.86.86h11.25c.51,0,.93-.42.93-.93v-41.66h23.54c.58,0,1.06-.47,1.06-1.06v-8.79c0-.5-.41-.91-.91-.91h-60.51c-.49,0-.88.39-.88.88v8.93c0,.52.43.95.95.95Z"/>
+    <path class="cls-1" d="M746.53,286.76v-8.05c0-.63-.51-1.13-1.13-1.13h-58.97c-.56,0-1.02.46-1.02,1.02v8.07c0,.57.46,1.04,1.04,1.04h41.03l-42.98,32.8c-.37.28-.58.71-.58,1.17v8.1c0,.63.51,1.14,1.14,1.14h61.24c.52,0,.95-.42.95-.95v-8.12c0-.58-.47-1.06-1.06-1.06h-43.51l43.24-32.77c.39-.3.63-.77.63-1.26Z"/>
+    <path class="cls-1" d="M361.65,316.61l-24.08-38.5c-.21-.33-.57-.53-.96-.53h-17.67c-.62,0-1.13.51-1.13,1.13v51.08c0,.62.51,1.13,1.13,1.13h10.46c.63,0,1.14-.51,1.13-1.14l-.3-40.82,25.88,41.42c.21.33.57.53.96.53h8.77c.39,0,.75-.2.96-.53l26.03-41.43-.45,40.81c0,.63.5,1.14,1.13,1.14h10.53c.62,0,1.13-.51,1.13-1.13v-51.08c0-.62-.51-1.13-1.13-1.13h-17.43c-.39,0-.75.2-.96.53l-24,38.5Z"/>
+    <rect class="cls-1" x="418.28" y="277.58" width="13.04" height="53.34" rx="1.08" ry="1.08"/>
+    <path class="cls-1" d="M502.58,320.43l-38.22-42.34c-.29-.32-.71-.51-1.15-.51h-17.61c-.64,0-1.16.52-1.16,1.16v51.03c0,.64.52,1.16,1.16,1.16h10.33c.64,0,1.16-.52,1.16-1.16l-.22-41.45,38.04,42.16c.26.29.63.45,1.02.45h17.77c.64,0,1.16-.52,1.16-1.16v-51.03c0-.64-.52-1.16-1.16-1.16h-10.17c-.64,0-1.16.52-1.16,1.16l.22,41.69Z"/>
+    <path class="cls-1" d="M541.85,320.47l-5.54,9.87c-.27.48-.77.77-1.32.77h-10.46c-1.16,0-1.89-1.25-1.31-2.26l29.08-50.77c.27-.47.77-.76,1.31-.76h15.1c.54,0,1.05.29,1.31.77l28.62,50.77c.57,1.01-.16,2.25-1.31,2.25h-10.09c-.54,0-1.04-.29-1.31-.76l-5.7-9.89h-38.39ZM561.05,286.03l-14.44,25.73h29.03l-14.6-25.73Z"/>
+  </g>
+</svg>
+    </div>
+    <div class="brand-sub" style="text-align:center">Sistema de Gestão de Passageiros — Gmining</div>
+    <div class="field">
+      <label>Email</label>
+      <input type="email" id="loginEmail" placeholder="seu@email.com" class="fi" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()">
+    </div>
+    <button class="btn-login" id="btnLogin" onclick="doLogin()">Entrar no sistema</button>
+    <div id="loginAlert" style="margin-top:12px"></div>
+    <div class="login-hint">Mina TZ — Brazauro / Gmining Ventures</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div class="app" id="app">
+  <div class="sidebar">
+    <div class="sb-header">
+      <div class="sb-logo" style="padding:2px 0">
+        <svg id="logo_sidebar" style="height:54px;width:auto;display:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #ffffff;
+      }
+
+      .cls-2 {
+        fill: #c2932d;
+      }
+    </style>
+  </defs>
+  <path class="cls-2" d="M290.02,253.06c0-12.59-6.72-24.22-17.62-30.52l-92.01-53.12c-10.9-6.29-24.34-6.29-35.24,0l-92.01,53.12c-10.9,6.29-17.62,17.93-17.62,30.52v106.25c0,12.59,6.72,24.22,17.62,30.52l92.01,53.12c10.9,6.29,24.34,6.29,35.24,0l92.01-53.12c10.9-6.29,17.62-17.93,17.62-30.52v-106.25ZM246.27,272.05c0,4.11-3.33,7.43-7.43,7.43h-98.09c-.33,0-.65.02-.98.06-3.23.45-19.78,3.77-19.78,24.43s16.57,24.79,19.78,25.23c.32.04.64.06.96.06h65.07s8.96.62,8.96,9.76c0,9.94-8.96,9.67-8.96,9.67h-65.6c-.32,0-.62-.02-.94-.06-4.56-.58-38.09-6.23-38.09-46.26,0-29.99,27.42-40.55,37.8-40.55h82.28c4.17,0,7.53-3.44,7.43-7.61l-.09-3.94c-.1-4.04-3.39-7.26-7.43-7.26h-82.99c-26.36,0-53.78,29.99-53.78,59.37,0,44.64,32.05,61.22,52.45,62.83,17.98,1.42,64.88.57,82.98.17,4.04-.09,7.27-3.39,7.27-7.43v-35.35c0-4.11-3.33-7.43-7.43-7.43h-37.29s-10.03.35-10.03-9.58,10.03-9.32,10.03-9.32l55.99.47c4.08.03,7.37,3.35,7.37,7.43v74.52c0,4.05-3.23,7.36-7.28,7.43-20.83.37-80.61,1.28-103.2-.14-27.61-1.74-70.28-20.32-70.28-85.46,0-41.62,41.26-75.16,70.28-74.9,8.22.08,80.1.27,103.61.34,4.1.01,7.41,3.34,7.41,7.43v38.66Z"/>
+  <g>
+    <path class="cls-1" d="M616.28,288.33h23.72v41.73c0,.47.38.86.86.86h11.25c.51,0,.93-.42.93-.93v-41.66h23.54c.58,0,1.06-.47,1.06-1.06v-8.79c0-.5-.41-.91-.91-.91h-60.51c-.49,0-.88.39-.88.88v8.93c0,.52.43.95.95.95Z"/>
+    <path class="cls-1" d="M746.53,286.76v-8.05c0-.63-.51-1.13-1.13-1.13h-58.97c-.56,0-1.02.46-1.02,1.02v8.07c0,.57.46,1.04,1.04,1.04h41.03l-42.98,32.8c-.37.28-.58.71-.58,1.17v8.1c0,.63.51,1.14,1.14,1.14h61.24c.52,0,.95-.42.95-.95v-8.12c0-.58-.47-1.06-1.06-1.06h-43.51l43.24-32.77c.39-.3.63-.77.63-1.26Z"/>
+    <path class="cls-1" d="M361.65,316.61l-24.08-38.5c-.21-.33-.57-.53-.96-.53h-17.67c-.62,0-1.13.51-1.13,1.13v51.08c0,.62.51,1.13,1.13,1.13h10.46c.63,0,1.14-.51,1.13-1.14l-.3-40.82,25.88,41.42c.21.33.57.53.96.53h8.77c.39,0,.75-.2.96-.53l26.03-41.43-.45,40.81c0,.63.5,1.14,1.13,1.14h10.53c.62,0,1.13-.51,1.13-1.13v-51.08c0-.62-.51-1.13-1.13-1.13h-17.43c-.39,0-.75.2-.96.53l-24,38.5Z"/>
+    <rect class="cls-1" x="418.28" y="277.58" width="13.04" height="53.34" rx="1.08" ry="1.08"/>
+    <path class="cls-1" d="M502.58,320.43l-38.22-42.34c-.29-.32-.71-.51-1.15-.51h-17.61c-.64,0-1.16.52-1.16,1.16v51.03c0,.64.52,1.16,1.16,1.16h10.33c.64,0,1.16-.52,1.16-1.16l-.22-41.45,38.04,42.16c.26.29.63.45,1.02.45h17.77c.64,0,1.16-.52,1.16-1.16v-51.03c0-.64-.52-1.16-1.16-1.16h-10.17c-.64,0-1.16.52-1.16,1.16l.22,41.69Z"/>
+    <path class="cls-1" d="M541.85,320.47l-5.54,9.87c-.27.48-.77.77-1.32.77h-10.46c-1.16,0-1.89-1.25-1.31-2.26l29.08-50.77c.27-.47.77-.76,1.31-.76h15.1c.54,0,1.05.29,1.31.77l28.62,50.77c.57,1.01-.16,2.25-1.31,2.25h-10.09c-.54,0-1.04-.29-1.31-.76l-5.7-9.89h-38.39ZM561.05,286.03l-14.44,25.73h29.03l-14.6-25.73Z"/>
+  </g>
+</svg>
+      </div>
+      <div class="sb-sub">Passageiros v4.0</div>
+    </div>
+    <nav class="sb-nav">
+      <div class="nav-group">Principal</div>
+      <div class="nav-item active" onclick="goPage('dashboard',this)" id="nav-dashboard">
+        <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg><span>Painel</span>
+      </div>
+      <div class="nav-group">Listas</div>
+      <div class="nav-item" onclick="goPage('preencher',this)" id="nav-preencher">
+        <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg><span>Preencher Lista</span>
+      </div>
+      <div class="nav-item hidden" onclick="goPage('consolidado',this)" id="nav-consolidado">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg><span>Lista Consolidada</span>
+      </div>
+      <div class="nav-group">Administração</div>
+      <div class="nav-item" onclick="goPage('cadastro',this)" id="nav-cadastro">
+        <svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg><span>Cadastro</span>
+      </div>
+      <div class="nav-item hidden" onclick="goPage('locais',this)" id="nav-locais">
+        <svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg><span>Locais</span>
+      </div>
+      <div class="nav-item hidden" onclick="goPage('usuarios',this)" id="nav-usuarios">
+        <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span>Usuários</span>
+      </div>
+    </nav>
+    <div class="sb-footer">
+      <div class="sb-user" onclick="doLogout()">
+        <div class="avatar" id="sbAvatar">M</div>
+        <div><div class="u-name" id="sbName">—</div><div class="u-role" id="sbRole">Sair do sistema</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">Painel</div>
+      <div class="topbar-right">
+        <div class="realtime-badge" id="realtimeBadge" style="display:none">
+          <div class="realtime-dot"></div>Tempo real
+        </div>
+        <span class="text3 mono" style="font-size:12px" id="topDate"></span>
+        <span class="badge" id="topBadge">—</span>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page active" id="page-dashboard">
+        <div class="flex-between mb20">
+          <div>
+            <div class="section-title" id="dashGreeting">Painel</div>
+            <div class="section-sub" style="margin:0" id="dashSub">Visão geral</div>
+          </div>
+        </div>
+        <div class="grid4 mb16">
+          <div class="metric"><div class="metric-label">Entradas hoje</div><div class="metric-value green" id="mEnt">—</div><div class="metric-sub">passageiros</div></div>
+          <div class="metric"><div class="metric-label">Saídas hoje</div><div class="metric-value blue" id="mSai">—</div><div class="metric-sub">passageiros</div></div>
+          <div class="metric"><div class="metric-label">Setores enviaram</div><div class="metric-value amber" id="mEnv">0</div><div class="metric-sub">hoje</div></div>
+          <div class="metric"><div class="metric-label">Total cadastrados</div><div class="metric-value purple" id="mTotal">—</div><div class="metric-sub">colaboradores</div></div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <div class="card-title">Submissões recentes</div>
+            <table class="tbl"><thead><tr><th>Setor</th><th>Tipo</th><th>Qtd</th><th>Enviado por</th><th>Status</th></tr></thead>
+            <tbody id="tbSubs"><tr><td colspan="5" style="color:var(--text3);text-align:center;padding:20px">Carregando...</td></tr></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-title">Setores pendentes hoje</div>
+            <div class="pending-grid" id="pendGrid"><div style="color:var(--text3);font-size:13px">Carregando...</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PREENCHER -->
+      <div class="page" id="page-preencher">
+        <div class="section-title mb8">Preencher lista</div>
+        <div class="section-sub">Selecione os passageiros e confirme o local de embarque</div>
+        <div style="max-width:800px">
+          <div class="card mb16">
+            <div class="card-title">Informações da viagem</div>
+            <div class="form-grid">
+              <div class="fg"><label>Setor</label><select class="fs" id="fSetor" onchange="onSetorChange()"></select></div>
+              <div class="fg"><label>Data</label><input class="fi" type="date" id="fData"></div>
+              <div class="fg"><label>Tipo de transporte</label>
+                <select class="fs" id="fTransporte" onchange="onTranspChange()">
+                  <option value="onibus">🚌 Ônibus</option>
+                  <option value="charter">✈️ Avião (Charter)</option>
+                </select>
+              </div>
+              <div class="fg" id="grpRotaOnibus"><label>Rota</label>
+                <select class="fs" id="fRotaOnibus">
+                  <option value="entrada">Itaituba → Mina TZ (Entrada)</option>
+                  <option value="saida">Mina TZ → Itaituba (Saída)</option>
+                  <option value="ambos">Ambos (Entrada + Saída)</option>
+                </select>
+              </div>
+              <div class="fg hidden" id="grpRotaAviao"><label>Rota (charter)</label>
+                <select class="fs" id="fRotaAviao">
+                  <option value="entrada">Manaus → Mina TZ (Entrada)</option>
+                  <option value="saida">Mina TZ → Manaus (Saída)</option>
+                  <option value="entrada2">Santarém → Mina TZ (Entrada)</option>
+                  <option value="saida2">Mina TZ → Santarém (Saída)</option>
+                </select>
+              </div>
+              <div class="fg hidden" id="grpPartida"><label>Horário de partida</label><input class="fi" type="time" id="fPartida"></div>
+              <div class="fg hidden" id="grpChegada"><label>Horário de chegada</label><input class="fi" type="time" id="fChegada"></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="flex-between mb12">
+              <div class="card-title" style="margin:0">Passageiros</div>
+              <div class="flex" style="gap:6px">
+                <button class="btn sm" onclick="selectAll()">Todos</button>
+                <button class="btn sm red" onclick="clearAll()">Limpar</button>
+              </div>
+            </div>
+            <input class="fi" id="paxSearch" placeholder="Buscar pelo nome..." oninput="filterPax(this.value)" style="margin-bottom:10px">
+            <div class="alert amber mb12" style="display:flex;align-items:flex-start;gap:8px;font-size:12px">
+              <svg style="width:14px;height:14px;stroke:var(--amber);fill:none;stroke-width:2;flex-shrink:0;margin-top:1px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+              <span>Ao selecionar, <strong>confirme o local de embarque/desembarque</strong>. O local padrão é sugerido mas deve ser confirmado.</span>
+            </div>
+            <div class="flex-between" style="margin-bottom:6px">
+              <span style="font-size:11px;color:var(--text3);font-family:var(--mono)" id="paxShowing">—</span>
+              <span style="font-size:12px;color:var(--text2)" id="selCount">0 selecionados</span>
+            </div>
+            <div class="pax-container" id="paxContainer">
+              <div style="color:var(--text3);text-align:center;padding:24px;font-size:13px">Selecione um setor acima</div>
+            </div>
+            <div class="divider"></div>
+            <button class="btn green" id="btnEnviar" onclick="submitLista()">
+              <svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Enviar lista
+            </button>
+            <div id="submitAlert" style="margin-top:10px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CONSOLIDADO -->
+      <div class="page" id="page-consolidado">
+        <div class="flex-between mb16">
+          <div>
+            <div class="section-title">Lista consolidada</div>
+            <div class="section-sub" style="margin:0">Todas as listas enviadas — atualiza em tempo real</div>
+          </div>
+          <div class="flex">
+            <input class="fi" type="date" id="filtroData" style="width:150px" onchange="loadConsolidado()">
+            <button class="btn amber" onclick="embaralhar()">
+              <svg viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
+              Embaralhar
+            </button>
+            <button class="btn green" onclick="exportPDF()">
+              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Exportar PDF
+            </button>
+          </div>
+        </div>
+        <div class="tab-bar">
+          <div class="tab active" onclick="switchTab('entrada',this)">Entrada <span class="tag green" style="margin-left:6px" id="cntEnt">0</span></div>
+          <div class="tab" onclick="switchTab('saida',this)">Saída <span class="tag red" style="margin-left:6px" id="cntSai">0</span></div>
+        </div>
+        <div class="card">
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th style="width:40px">N°</th><th>Nome</th><th>Empresa</th><th>Setor</th><th>Embarque/Desembarque</th><th>Transporte</th></tr></thead>
+              <tbody id="tbCons"><tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">Selecione uma data</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- CADASTRO -->
+      <div class="page" id="page-cadastro">
+        <div id="cadIndex">
+          <div class="flex-between mb20">
+            <div>
+              <div class="section-title">Cadastro de pessoas</div>
+              <div class="section-sub" style="margin:0" id="cadSubtitle">Clique em um setor para gerenciar</div>
+            </div>
+            <button class="btn blue hidden" id="btnAddGlobal" onclick="openModalAdd()">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Adicionar pessoa
+            </button>
+          </div>
+          <div class="setor-grid" id="setorGrid"></div>
+          <div id="modalAdd" class="hidden">
+            <div class="card" style="max-width:480px;border-color:var(--blue-border)">
+              <div class="card-title">Adicionar pessoa</div>
+              <div class="form-grid">
+                <div class="fg full"><label>Setor</label><select class="fs" id="modalSetor"></select></div>
+                <div class="fg full"><label>Nome completo</label><input class="fi" id="modalNome" placeholder="Nome completo"></div>
+                <div class="fg"><label>Empresa</label><input class="fi" id="modalEmpresa" placeholder="Ex: Gmining..."></div>
+                <div class="fg"><label>Local padrão</label><select class="fs" id="modalLocal"></select></div>
+              </div>
+              <div class="flex"><button class="btn green" onclick="saveModal()">Salvar</button><button class="btn" onclick="closeModal()">Cancelar</button></div>
+              <div id="modalAlert" style="margin-top:8px"></div>
+            </div>
+          </div>
+        </div>
+        <div id="cadDetail" class="hidden">
+          <div class="flex-between mb16">
+            <div class="section-title" id="detailTitle">Setor</div>
+            <button class="btn sm" onclick="closeDetail()">← Voltar</button>
+          </div>
+          <div class="card mb16">
+            <div class="card-title">Adicionar pessoa</div>
+            <div class="flex" style="gap:10px;flex-wrap:wrap">
+              <input class="fi" style="flex:2;min-width:180px" id="addNome" placeholder="Nome completo">
+              <input class="fi" style="flex:1;min-width:130px" id="addEmpresa" placeholder="Empresa">
+              <select class="fs" style="flex:1;min-width:130px" id="addLocal"></select>
+              <button class="btn green" onclick="addPessoaDetail()">Adicionar</button>
+            </div>
+            <div id="addAlert" style="margin-top:8px"></div>
+          </div>
+          <div class="card">
+            <div class="flex-between mb12">
+              <div class="card-title" style="margin:0" id="detailCountTitle">Pessoas</div>
+              <input class="fi" style="width:240px" id="searchDetalhe" placeholder="Buscar..." oninput="renderDetail()">
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl"><thead><tr><th style="width:36px">#</th><th>Nome</th><th>Empresa</th><th>Local padrão</th><th style="width:90px"></th></tr></thead>
+              <tbody id="tbDetail"></tbody></table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOCAIS -->
+      <div class="page" id="page-locais">
+        <div class="section-title mb8">Locais de embarque e desembarque</div>
+        <div class="section-sub">Gerencie os pontos disponíveis</div>
+        <div style="max-width:520px">
+          <div class="card mb16">
+            <div class="card-title">Adicionar novo local</div>
+            <div class="flex" style="gap:10px">
+              <input class="fi" style="flex:1" id="novoLocal" placeholder="Nome do local...">
+              <button class="btn green" onclick="addLocal()">Adicionar</button>
+            </div>
+          </div>
+          <div class="card"><div class="card-title">Locais cadastrados</div><div id="localList"></div></div>
+        </div>
+      </div>
+
+      <!-- USUÁRIOS -->
+      <div class="page" id="page-usuarios">
+        <div class="flex-between mb20">
+          <div>
+            <div class="section-title">Controle de acesso</div>
+            <div class="section-sub" style="margin:0">Gerencie usuários e permissões</div>
+          </div>
+          <button class="btn blue" id="btnNovoUsuario" onclick="abrirModalNovoUsuario()">
+            <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Novo usuário
+          </button>
+        </div>
+
+        <!-- Modal novo usuário -->
+        <div id="modalNovoUsuario" class="hidden card mb16" style="max-width:520px;border-color:var(--blue-border)">
+          <div class="card-title">Criar novo usuário</div>
+          <div class="form-grid">
+            <div class="fg full"><label>Nome completo</label><input class="fi" id="nuNome" placeholder="Nome completo"></div>
+            <div class="fg"><label>Email</label><input class="fi" id="nuEmail" type="email" placeholder="email@gminingventures.com"></div>
+            <div class="fg"><label>Usuário</label><input class="fi" id="nuUsuario" placeholder="Ex: jsilva"></div>
+            <div class="fg"><label>Nível de acesso</label>
+              <select class="fs" id="nuRole" onchange="toggleSetorSelect()">
+                <option value="setor">Responsável de Setor</option>
+                <option value="master">Master</option>
+              </select>
+            </div>
+            <div class="fg hidden" id="grpSetorUsuario"><label>Setor(es)</label><select class="fs" id="nuSetor" multiple style="height:100px"></select></div>
+          </div>
+          <div class="alert blue mb12" style="font-size:12px">
+            Senha inicial: <strong id="senhaPreview">—</strong> (usuário obrigado a trocar no 1º acesso)
+          </div>
+          <div class="flex">
+            <button class="btn green" onclick="criarNovoUsuario()">Criar usuário</button>
+            <button class="btn" onclick="fecharModalNovoUsuario()">Cancelar</button>
+          </div>
+          <div id="nuAlert" style="margin-top:8px"></div>
+        </div>
+
+        <div class="card">
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr><th>Nome</th><th>Email</th><th>Usuário</th><th>Nível</th><th>Setor(es)</th><th>Status</th><th></th></tr></thead>
+              <tbody id="tbUsuarios"><tr><td colspan="7" style="color:var(--text3);text-align:center;padding:20px">Carregando...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIGURAÇÃO SUPABASE
+// Substitua com suas credenciais do projeto Supabase
+// Project Settings > API
+// ============================================================
+const SUPABASE_URL = 'https://xuqjslgvxheaezuuteii.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_T8FuSmkOZJVslHDKYZ52YA_q8pyWTiZ';
+
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ============================================================
+// DADOS LOCAIS (pessoas cadastradas via Excel)
+// ============================================================
+const PESSOAS = {
+  mina: [
+    {nome:'Adeilson Lima do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adeilson Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adria Keully da Silva Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adriana dos Santos do Carmo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adriano Pinheiro Moraes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adriano Viana dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adrielson Neres dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Afonso Souza Berredo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Agripino Salazar Costa Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Aldo Nascimento da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Aleilson de Souza Mota',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alessandro José de Medeiros Victor',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alex Monteiro de Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alexssandra Martins Assunção Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Aliel de Oliveira Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Amilton Machado Neves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Amós Oliveira dos Anjos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ana Beatriz Leal',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ana Maria do Nascimento Cezario',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderley Neres dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson Clei da Silva e Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson Nunes da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andrea Lilian Reis dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andressa Gonçalves Ribeiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'André Luis Melo da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'André Luis Rocha Ribeiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antoniel Conceição Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Carlos Cajado de Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Cesar de Freitas Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Cesar Marques dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Cláudio Ferreira Dias Junior',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio dos Reis Souza Rego',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Fagner dos Santos Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Rodrigues da Silva Filho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Rodrigues De Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Santos Pereira Neto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Vieira de Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antônio Miguel Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arielson Sousa Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arlesom Marques Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arlison Rocha das Neves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arnoldo Vitor Picanço Figueira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Augusto Cesar Rebelo Figueiredo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Benerval da Silva Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Brena Bastos Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bruno da Mota Assunção',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bruno Santos Pimentel',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bruno Tiago Silva e Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Camille Adriana Auzier Gallas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Carlos Eduardo Lobo Dourado',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Carlos Eduardo Silva dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Carlos Rebelo dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Carlos Sergio Santana Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Caroline Sousa Cezar',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Charle dos Santos Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Charles da Silva Araújo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Charley de Jesus Acioly',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cid dos Santos Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Claudio Aguiar Vieira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Claudionor Silva Martins',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cledinalmo de Oliveira Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cleidney Nascimento de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cleiton Pereira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Clesson Costa Dutra',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Clorisvaldo Silvito Ramos Filho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cláudia Caroline Martins Pletz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cristiano Freitas de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Danielle Soares de Paula',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Danielly Kamila Silveira Bonato',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Darlisson Gonçalves dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Davi Rebelo Carneiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'David Robson Costa dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dedson Souza Castro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Deivisson da Silva Tenorio',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Denilson Pereira de França',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Deyme de Abreu dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dheison Maicon Carvalho Saraiva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diego Arthur Elvino da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diego Baldino Rebelo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diego da Silva Cezario',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diemerson Oliveira de Albuquerque',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dilvan Barbosa de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diogo Alves da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Domingos dos Santos Gomes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dorizete Oliveira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Douglas Santos Bechara',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dowglas Willy dos Santos Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eclesiaste José Quadros Moreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edelson Lucena da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edgar Araújo Nobre',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ediléia Carvalho de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edirayson Feitosa Mello',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ednei da Silva Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ednor Afonso Franco Couto Junior',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Edu Kerlisson da Silva e Silva',empresa:'Solo Eng.',local:'Itaituba'},
+    {nome:'Edvanilson Larais Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edvânia Lisboa Menezes',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Elber Santana Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elessandro Nascimento de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elias Jonas Miranda Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elielson Aguiar de Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elielton Silva do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elinaldo Ferreira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elio José Lima Martins',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eliton Marques da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elvis dos Santos Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Emanuel Oliveira Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Emerson Arruda Lisboa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Emerson Chaves Teixeira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Emerson Silva Almeida',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eranildo Pinheiro Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Erica da Silva Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Erick Lima Soares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Erivaldo Castro dos Passos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Erivaldo de Almeida Freitas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ester Araujo Endelier',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ester Araujo Enderle',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eudimar de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Everton Xavier da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ewerton dos Santos Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francinei Silva de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Denis Moreira da Cruz Tavares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Farias',empresa:'Sol. Eng.',local:'Itaituba'},
+    {nome:'Francisco Francieudo Lopes Vieira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francivaldo Portela Carvalho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Frank Rabelo dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Fábio de Oliveira Malcher',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Georgiton Honan Blondel Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Geovane Lobato da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Geovani Mendes de Macedo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Geovanne Andrade de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gideone Marcos de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gierlison da Mata Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gil Wagner Barbosa Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gleydson Blondel da Rocha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gracineia Justina Barbosa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Guilherme Serra Messias',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gustavo Azevedo Miranda',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Gusthavo Henrique Vieira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Helia Cristina da Cruz Evangelista',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Helly da Silva Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Israel Raileffy Nascimento Machado',empresa:'Solo Eng.',local:'Itaituba'},
+    {nome:'Ivan Rodrigues Vera da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ivanilde Oliveira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Izack Ferreira Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jacksonkley Costa da Frota',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jailson de Araujo Barros',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jakson Nogueira Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Janderson de Sousa de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Janete da Conceição Freitas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jefferson Carlos Moreira Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jerdane Possiano da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jessica Baldoino Rebelo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jessica Castro Santos da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jessica Oliveira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jherfler Ribeiro Lemes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jheverson Melk Matias Nogueira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jhonatan Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jhonatas Aguiar dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jhordson Jhonatan Blondel',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Joan Cauby Macedo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Joas Gonçalves Vieira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jocimar Lopes Matos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jonathan Chaves Dias',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jonhatan Correa do Carmo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jonilson Serrão Alves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jonisley da Silva Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jorge Alex Miranda Gomes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jorge Yuri da Silva Barbosa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Josafá de Alcantara Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Josias Batista de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Josinaldo de Souza Nunes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Augusto Lima de Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Genesson Pereira Moreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Manoel Coelho Junior',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Nere Gonçalves Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'João de Deus Ferreira Neto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'João Marcos Oliveira Tavares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'João Pedro Porto Sarmento',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'João Victor Pereira Nunes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'João Vitor Rodrigues Figueira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jucielly Valentim de Farias',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Julie Sabrina Silva Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jullysbela do Socorro Gomes Barata',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Karol Valentim Soares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Kefferson da Silva Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Kelmo Antonio Oliveira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Kleberson de Brito Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lauri da Silva Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Leandro de Meneses Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Leandro Martins Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Leandro Ramos Dutra',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Leandro Souza da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Leonardo Vieira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lorisvaldo Barreto dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lorrane Vieira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucas Campos Souza',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Luciana dos Santos Santana',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luciana Oliveira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucivaldo Pereira de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luis Felipe da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luiz Henrique Siqueira Couto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Magno Rogério Santos da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maicon Germano Cardoso Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maik Gomes da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Malcon Rafeal da Silva Viana',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcelo de Jesus Lacerda',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcelo Gato Queiroz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcelo Ribeiro do Amaral',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcilene Ramos da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcio Benedito Souza dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcio Ferreira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcio Pereira Brito',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marco Daniel Bentes Batista',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Adriano Sousa de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Bentes Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Brelaz Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Fernando Sampaio Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Paes Marialva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maria Conceição Sousa da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maria Eduarda Silva Almeida',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maria Eleneia Silva e Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maria Elizangela Sousa de Albuquerque',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maria Paula Barbosa Ribeiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maria Vania Lima de Melo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Mario da Conceição Correa Filho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Matheus Barros dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Max Assis da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Mayanderson Nunes Da Conceição',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Meliane Assis dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Moisés Nazaré Sarmento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Moisés Oliveira Cerqueira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Morizaldo Ferreira Soares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Natalino Bernado Maciel',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Odair José Viana Avinte',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Odair Ribeiro Gonçalves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Oziel Alves de Matos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Paulo Edson Cardoso Martins',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Paulo Henrique de Souza Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Paulo José da Luz Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rafaela Fernanda de Souza e Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Railan Gomes da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Railan Vieira Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimensom Rogério Sousa Vale',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Edson Souza da Cunha Junior',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo José Figueira Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Pinheiro Soares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Vieira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raiza Cristina Macedo Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Randson Denis Colares Azevedo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rayflan Feitosa Mello',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Reginaldo Alves de Miranda',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Remilton da Conceição Ribeiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Renata Beatriz dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Renato Felix Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Renato Fernandes Pacheco',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Reniel Almada Cajado',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rerison Lima do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Robson Rodrigo Sousa Vale',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Robson Santos Chaves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Robson Silva Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rodrigo da Silva Rocha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rodrigo Leão da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rodrigo Pereira Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rodrigo Soares Oliverira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rogério Passos da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Romilson Larais de Souza Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Romulo Cruz da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Romulo João Viana Xavier',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ronan Moraes da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rosilei Nunes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rosileni Nunes da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rosineia Machado Saldanha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rozenildo Silva de Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ryan Nascimento Castro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Samuel do Carmo Barros',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sandra Sonsin Levati',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Saú Lima de Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sidinei Saraiva Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sidney Sousa De Morais',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Tadeu Frota de Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tafarel Macedo da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tailson dos Santos Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tassio Coutinho Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tatiane Silva Brito',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Taércia Soares Brasiliano',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thais Borges Alves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thayonara Cristina Cavalcante do Carmo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thiago Teixeira Frota',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thiarles Pereira de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thyago Freitas dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tiago Da Conceição Macedo',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Tiago Santos Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Valdeci Silva Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Valdisergio Gonçalves dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vanessa Ferreira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vanilson Batista de Vasconcelos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Victor Kallyo Dos Santos Sena',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vinicius Figueiredo Morais',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vitor Carvalho de Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wadson da Silva Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Walane Junio dos Santos Maciel',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wallace Albuquerque de Jesus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wallace Nunes da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wallatyla Sousa Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wanderson de Oliveira Carvalho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Warlison Matheus V. Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Weberton da Mota Teixeira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wellington Cesar Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wellington Valente Gama',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wendel da Silva Cruz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wenderson Pimentel Nunes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Werverthon Kleves Lima Reis',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'William Pinheiro Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Willian Miguel Santos dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wyllk Ubyrathan Arvelos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Yan Juan Wegner Machado',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Zaluone de S. Moreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Éder Duarte de Jesus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ítalo Breno Araujo de Jesus',empresa:'Gmining',local:'Itaituba'},
+  ],
+  almox: [
+    {nome:'Akim Thiago Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Akim Thiago Santos Vieira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Denilson da Silva Costa',empresa:'Concreatus',local:'Itaituba'},
+    {nome:'Elias Oliveira da Páscoa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucas Ribeiro da Silva',empresa:'Concreatus',local:'Itaituba'},
+    {nome:'Odair Rodrigues',empresa:'EXCEL',local:'Itaituba'},
+    {nome:'Wallax Fernando S. Barros',empresa:'Deltamak',local:'Itaituba'},
+  ],
+  geoexp: [
+    {nome:'Adelmo Vasconcelos de Sá',empresa:'FCK',local:'Itaituba'},
+    {nome:'Alan Freitas Alves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elielson Gomes Maia',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gilvan Luiz Ribeiro',empresa:'FCK',local:'Itaituba'},
+    {nome:'Gleydson Mascarem Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Izauro Lourenço da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jarlan dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jose Francisco Souza dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jose Nirton da Silva Junior',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José da Silva Junior',empresa:'Itubombas',local:'Itaituba'},
+    {nome:'Kleidson Lima de Oliveira',empresa:'FCK',local:'Itaituba'},
+    {nome:'Manoel de Souza',empresa:'Major',local:'Itaituba'},
+    {nome:'Noeverton Maia do Carmos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Alves da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Amaral',empresa:'Major',local:'Itaituba'},
+    {nome:'Rodrigo Ribeiro Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sirlan da Silva de Souza',empresa:'FCK',local:'Itaituba'},
+    {nome:'Wagner da Silva Ferreira',empresa:'Gmining',local:'Itaituba'},
+  ],
+  hl: [
+    {nome:'Alanira de Moura Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alisson Ruan Souza dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andre da Silva Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andreia Martins Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bernardo de Sousa Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Debora Maria Nunes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Douglas de Sousa Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edilene Carvalho de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edivanei Julio da Paz Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Fabrício Di Paula da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Geovane Fontinele de Araújo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Glayssa Teixeira Martin',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Graciane Gonçalves de Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Igor Freira Maia',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ivo Renato Sousa Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ivonnede da Silva Soares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jeane de Souza Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jorge Amado Sousa de Jesus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Josiane da Silveira Lobo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Clilton Farias',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Larissa Nunes Pinto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luciana Quadros da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luciano dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucione Carneiro Rocha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luziane Pereira Do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcela Sousa Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos dos Santos Matias',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos dos Santos Matis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raillyane de Sousa Vasques',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Regiane Cristina Macedo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Regiane Cristina Macedo Mesquita',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Romario de Moraes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Romario Rodrigues da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Simone de Souza Brito',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thiago Amorim Carrolino',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thiago Sousa Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tiago da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vanderleia Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vanilda Bandeira Medeiros',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vanusa Pereira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vera Eunice Pereira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Warleson Costa Pereira',empresa:'Gmining',local:'Itaituba'},
+  ],
+  hs: [
+    {nome:'Adenilson Lima Rocha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alessandra Amélia Lopes Matos',empresa:'Assistente Social',local:'Itaituba'},
+    {nome:'Alexandre Sena Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Daniel Alves De sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edson Lima da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elisangela Carvalho Brasil',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Iranildo Lopes França',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ismael Yuri Santos Lela',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jardson Clay Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jardson Clay Costa da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Madson Pinto Viana',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcio Nogueira Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maria Raimunda Leão Cavalcante',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Max Jones Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Max Weber dos Santos Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ocivane Moreira Reis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raquel Azevedo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raquel Martins De azevedo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ronilson Santos Melo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sergio de Moraes Silva',empresa:'Gmining',local:'Itaituba'},
+  ],
+  kitchen: [
+    {nome:'Adryane De Moraes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson Pereira Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andre Miranda Do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anne Caroline Santos Da Cruz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bruna Odorício Navarro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Carlison Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'David Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diego Barbosa Gonçalves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Douglas Pimentel',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edson da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elisiane Sá De Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Emanuel Victor Andrade',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eva Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Everton de Lima Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Fabiane Fernandes Vieira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Fagner Souza De Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Martins',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Viana',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gabriel Felipe De Jesus Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Givani Nascimento Viana',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ilane De Jesus Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ivanete De Almeida Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jorge Andre Ribeiro Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Joscilandia Rodrigues De Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Josevan Marinho De Castro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'João Paulo Santos Rego',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Kennedy Vinicius',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucivan Oliveira Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Manoel Evaristo Pinto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcia Alexandre',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcia De Araújo Soares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Frank Ribeiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maria Oneide',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Oziel Alves De Sá',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Paula Jholiane Menezes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Pedro Coelho Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rafael Santos De Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rai Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rayfrank Pereira Cardoso',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Roger Silva Alves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rogerio Vieira Dias',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wendel Souto',empresa:'Gmining',local:'Itaituba'},
+  ],
+  lab: [
+    {nome:'Cleison Lima da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Neto Vieira de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gustavo Kaua Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gustavo Kauã Araujo Bouillet',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jobson Mendes das Neves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Josimar dos Santos Pinheiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Juliana Maria Ribeiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jullyana Pereira Paula',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Mario Alves Bento Bisneto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Otaniel Soares de Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Pedro de Oliveira Neto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raramison Sousa Machado',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Richarlis Araujo Pantoja',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rikelme Jacob De Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Samuel da Silva Florindo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Samuel Florindo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tarcio dos Santos Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tiago Conceicao Firmino',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wander Patrick Oliveira Sousa',empresa:'Gmining',local:'Itaituba'},
+  ],
+  manmina: [
+    {nome:'Adriano Fonte dos Santos',empresa:'Sandvik',local:'Itaituba'},
+    {nome:'Adriano Viana Celestino',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Adrielson Constantina Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alex Silva da Silva',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Alexandre Freitas Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Almir Soares Gomes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson Silva De Aguiar',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andre Luiz Maciel Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andressa Jeane Santos Figueira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Francisco Correia De Jesus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ariel Zeferino Jose Reis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Artemizio Oliveira Guerreiro',empresa:'Itaço',local:'Itaituba'},
+    {nome:'Bosco Cavalcante Braga',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bruno Eduardo Leite Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bruno Melo De Carvalho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Carlos Augusto Da Silva Santana',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Claudenilson Conceicao Pinheiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Claudio Henrique da Costa Soares',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Clodenildo Lopes Do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Daniel da Silva Pinto',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Danilo Brandão De Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Darlisson Andre Sanches Batista',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Davi Da Cunha Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Denisson Vieira Da Mota',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Deuclesiano Viana dos Santos',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Deybson Teixeira Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dheymison Da Silva Cruz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diogo Buchinger Beltrame',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Dorenildo Moreira Chaves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Douglas Tavares Pinheiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ederson Soares De Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edinaldo Carvalho De Souza',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Edivano morais da silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edson Antonio de Souza',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Eduardo Lima De Araújo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elimarck Conceição Imbiriba',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elvis dos Santos Lima',empresa:'Itaço',local:'Itaituba'},
+    {nome:'Eneas Araujo Da Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Erlan Luiz Da Silva Nadler',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Evangelista Da Conceição Freitas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Everton Andrade De Brito',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Felipe Alves Rocha',empresa:'Itaço',local:'Itaituba'},
+    {nome:'Felipe Melo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francimar José Barroso',empresa:'Sandvik',local:'Itaituba'},
+    {nome:'Francinaldo De Castro Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Fabio Barbosa De Assis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Rocha Miranda',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Fábio Martins Dos Santos',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Geovane Mendes de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Israel Bastos Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Italo Gustavo Araujo Menezes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jair de Souza Rufino',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jairo Mesquita Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jairo Rodrigo Paula de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Janderson De Souza Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jaquison Oliveira De Aquino',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jasson Santos De Almeida Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jefferson Diniz Marinho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jesse Baltazar Lobo Rodrigues',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Jhon Mayk Sousa da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jhony Almeida Chaves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Joao Raimundo Tavares Eloi',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jocival Rodrigues Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jonas de Freitas Sousa',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'José Carlos Lopes Rodrigues',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Juan Leite Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Juan Wilgner Pessoa Porto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Kelvyn Enzo Batista',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Leandro Alan Dos Santos cunha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucas Mateus Viana Reis',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Lucas Uillami Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucas Weslley Leite Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucenildo Souza Martins',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luiz Carlos Silva Guara',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luiz Fernando Mesquita De Arruda',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luiz Junio Brito Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Makley Ferreira Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Manoel Nunes Santiago Neto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcelo Silva Gonçalves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcio Fabio de Sousa',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Marcio Henrique Pereira Camilo',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Marcio Rene Duarte De Jesus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Andrey Silva Siqueira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Cesar Lima Aguiar Sobrinho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Paulo Nunes De Almeida',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Pereira Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Reis Pinheiro',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Marcus Vinicius Gato Ribeiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Matheus Augusto Souza De Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Mayke Douglas Silva Ramos',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Melquesedeque Rodrigues Figueiredo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Milber Tavares Cruz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Mirian Liandra Marinho Castro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Natanael Gomes Barbosa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Nilton Cesar Correia Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Odinei Cavalcante Do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Pablo Rogério Gomes Prado',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Patrick Bismarck Santos Pantoja',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Paulo Henrique Pires Serra',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Paulo Ricardo Almeida Guimarães',empresa:'Plagecon',local:'Itaituba'},
+    {nome:'Pedro Vitor Moura Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Nonato Silva Moraes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ranilto Celestino Sobrinho',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Ray Douglas Beraldo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Renato de Jesus Lopes',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Rivaldo Costa Alves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Robenildo Gomes da Silva',empresa:'Itaço',local:'Itaituba'},
+    {nome:'Roberto Bispo dos Santos',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Ronan Pantoja Mineiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rosivaldo Fonseca Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sergio Barros Duarte Filho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sidenilson da Silva Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Silvio Antônio Santiago De Moraes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Simeao Da Silva Amorim',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Suellen Ramos Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tarcísio Dos Santos Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vandecarlos Lourenco Dos Santos',empresa:'ENAEX',local:'Itaituba'},
+    {nome:'Victor Soares de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Werbert da Silva Pereira',empresa:'Sotreq',local:'Itaituba'},
+    {nome:'Wesley Melo Chagas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wilgner Kawer Nogueira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wionam Da Silva Brito',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Yago Gaspar Mendonça',empresa:'Itaço',local:'Itaituba'},
+  ],
+  manplanta: [
+    {nome:'Abraao Pantoja Do Carmo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adeilton De Souza Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adelfson Ferreira De Carvalho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adenilson Rodrigues Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adirleno Lira Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Admilson Vitor Moreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Adson Gomes Guimaraes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alberto de Moura Mota',empresa:'HVAC',local:'Itaituba'},
+    {nome:'Alexsander Souza e Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alexsandro Rouso Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alice Nunes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Almir Correa E Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson De Lima Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson Luis De Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson Pinheiro De Melo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andrei Carlos De Sousa Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Erivan Da Silva Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arlan Da Silva Cardoso',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arlisson Moraes Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arnaldo Mota De Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Benevildo da silva do nascimento',empresa:'Feeltech',local:'Itaituba'},
+    {nome:'Benevildo da Silva Nascimento',empresa:'Feeltech',local:'Itaituba'},
+    {nome:'Bruno Gustavo Lopes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bruno Silva Pacheco',empresa:'DHL',local:'Itaituba'},
+    {nome:'Carla Taina Seixas Passos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cassio da Silva Reis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Claudione Silva De Andrade',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Claudivaldo De Sousa Lopes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cleberson Sousa Da Cruz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Clemerson Guerreiro Tavares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Clenilton Da Silva Andrade',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Daniel Mota Matheus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Daniel Rayan Pimentel Rebelo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Daniel Silva Rodrigues Filho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Danielson Cunha Peixoto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Davi Matheus Silva Costa',empresa:'HVAC',local:'Itaituba'},
+    {nome:'Delival Imbiriba Correa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dorinaldo Mendes De Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eder Junio Delgado De Brito',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edison Mauro Nunes Da Cruz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edivaldo Amaral Tavares',empresa:'DHL',local:'Itaituba'},
+    {nome:'Eduardo De Assis Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eduardo Feitosa',empresa:'HVAC',local:'Itaituba'},
+    {nome:'Edvaldo Pacheco Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elson Fonteles Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Enderson Siqueira Gamboa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ennio Klausein Mendonca Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Erasmo Carlos Leite Fernandes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Evandro Cardoso Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ezequias Mendes Moraes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ezequiel Pontes De Lima Schwab',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Edinaldo De Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Geovani Cruz Fermin',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gilmar De Sousa Mota',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gilsonei Santos Pimentel',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gilvan Brito Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Hairlan Evory Sousa De Jesus Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Harumi Miyasawa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Heroilton Coelho Figueira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ian De Oliveira Do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Isael Melo Albuquerque',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Isaias Alves Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ivanildo Marques Viana',empresa:'HVAC',local:'Itaituba'},
+    {nome:'Jailson Costa Pantoja',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jailton da Costa Cabral',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jaimar Dos Santos Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jairo Silva Pedrosa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Janderlei Silva Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Janielson Da Silva Dos Anjos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Janio Carlos Da Silva Mota',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jean Paulo Dias Portilho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jhon Figueiredo de Lima',empresa:'DHL',local:'Itaituba'},
+    {nome:'Joao Paulo Da Silva Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jonatas Guimaraes Printes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jorge Emerson Mota Figueira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jose Calmon Nogueira Gama Neto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jose Geovanildo Dos Santos Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jose Marcio Souza Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jose Mario Monteiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jose Wellington Pereira Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Inacio Mendes Pereira',empresa:'HVAC',local:'Itaituba'},
+    {nome:'João Antônio Rocha Pessoa',empresa:'HVAC',local:'Itaituba'},
+    {nome:'Julio Samuel De Farias Junior',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Kelvin Franklin Ribeiro de Paiva',empresa:'HVAC',local:'Itaituba'},
+    {nome:'Leandro Marques da Silva',empresa:'PROSSEG',local:'Itaituba'},
+    {nome:'Leandro Porfirio Tockio',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucas Pereira Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucas Soares Gelmini',empresa:'Scan',local:'Itaituba'},
+    {nome:'Luciano Reis Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luiz Claudio Viana Barbosa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Manoel Parintins Dos Santos Filho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcelo Lopes Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcelo Mendes Tanaka',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcio De Jesus Ferreira De Andrade',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcio Henrique dos Santos Lopes',empresa:'DHL',local:'Itaituba'},
+    {nome:'Marcio Henrique Flecha de Campos',empresa:'PollyRubber',local:'Itaituba'},
+    {nome:'Mateus Cruz Dos Prazeres',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Matheus dos Santos Barbosa Medina',empresa:'LINCE',local:'Itaituba'},
+    {nome:'Midiel Costa dos Reis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Miguel Heber Dos Santos Miranga',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Mizael Da Cunha Portela',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Moalem De Lima Fernandes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Nayra Giovana Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Patriky Assunção Maia',empresa:'DHL',local:'Itaituba'},
+    {nome:'Paulo Victor Rocha De Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Pedro Lodi Netto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Cleyton Da Silva Guimaraes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Eluirde Pereira Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Ferreira Da Silva Junior',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Nonato Dos Santos Filho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rainero Silva Limeira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ray Silva Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Reinaldo de Jesus Pereira',empresa:'Truck Service',local:'Itaituba'},
+    {nome:'Rellen Orlando Ferreira Vilhena',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Renato Siqueira Marinho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Richard Linhares Reis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Roberto Coelho Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Robival Xavier de Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rogerio De Freitas Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rogerio De Oliveira Mateus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ronaldo Fernandes Pacheco',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rone Von Siqueira Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rosivaldo Santos Magalhaes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rosivan Fernandes Dos Anjos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rubens Carvalho Chaves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rudiero Cassol Fogaca',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rui Torres Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rômulo Aglives Costa Queiroz',empresa:'PROSSEG',local:'Itaituba'},
+    {nome:'Salatiel Dos Santos Amorim',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sandro Muniz de Souza',empresa:'WEG',local:'Itaituba'},
+    {nome:'Sidney Sangel Monteiro Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Silas Do Nascimento Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Taina Cristina Sousa Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tiago De Souza Tavares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Valtir Lima Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vicente Cavalcante De Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Victor Emanoel Leite Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Waldiney De Souza Rosa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Walter Rui de Santana Junior',empresa:'Scan',local:'Itaituba'},
+    {nome:'Welerson Daniel Silva Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wesley Mauricio Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Zaqueu Guedes Lima',empresa:'Gmining',local:'Itaituba'},
+  ],
+  mansite: [
+    {nome:'Anna Beatriz Soares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arnaldo Cicero Guedes Moura',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cleucivan Viana de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cléubes Brito Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cristiano Duarte Vieira Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Denis Renê Santos da Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dionas Pinheiro dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edivaldo Cavalcante Vieira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edivaldo Silva Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edivan da Silva Martins',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eduardo Batista Miranda',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edvan Castor Gomes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Fabiane da Conceição Almeida',empresa:'Gmining',local:'Itaituba'},
+    {nome:'John Carlos Mota Porto',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jonas de Avelar Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Josevando Castro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Ilson da Costa Carvalho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jovan Alves da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Keven Vinicius de Abreu Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcos Alexandre Sousa de Andrade',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Alves Borges',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Lamberto Viana da Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Renato Nogueira Padro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rinaldo Rocha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rinaldo Rocha de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rinnaldo Junio Marinho Colares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Romerio Cunha da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rosivanildo Freitas de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Silvan Pinto Rebelo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thiago Magalhães de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tiago dos Santos Almeida',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Willer Colares Lima',empresa:'Gmining',local:'Itaituba'},
+  ],
+  meioambiente: [
+    {nome:'Alex Vieira',empresa:'Amazonia Negócios',local:'Itaituba'},
+    {nome:'Bianca Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bruno Leal',empresa:'Amazonia Negócios',local:'Itaituba'},
+    {nome:'Deusimar Silva Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Joao Sidney Oliveira',empresa:'Amazonia Negócios',local:'Itaituba'},
+    {nome:'Marlison de Abreu',empresa:'Amazonia Negócios',local:'Itaituba'},
+    {nome:'Maxuel Marques',empresa:'Amazonia Negócios',local:'Itaituba'},
+    {nome:'Maxwel Marques',empresa:'Amazonia Negócios',local:'Itaituba'},
+    {nome:'Otávio Silva da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Paula Azevedo Tavares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Stefane Nunes Malcher',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Walmir Pereira dos Santos',empresa:'Gmining',local:'Itaituba'},
+  ],
+  opplanta: [
+    {nome:'Adanias Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alair Agripino de Jesus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alessandro da Silva Castro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Alex Bruno Cidade Bentes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Anderson dos Santos Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andre Santana de Melo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Borges Gomes Filho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Antonio Valdeni de Jesus Alves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arley Correa Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Bianca Borges da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Caio Marlio Lopes Araujo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cairo Adriano Oliveira Magagnin',empresa:'Sol. Eng.',local:'Itaituba'},
+    {nome:'Carlos Pinheiro Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cleiton Melo da Fonseca',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cleiton Mendes Santiago',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Cleudison Pinto dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Daniel Lima Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Danilo Almeida da Mota',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eddy Wicttor Lima Goes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ednaldo Souza dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eduardo Fontinel Coelho Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edvane Carneiro Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Elaine Rocha de Almeida Pacifico',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Eronita de Souza Batista',empresa:'Sol. Eng.',local:'Itaituba'},
+    {nome:'Felipe Gustavo Oliveira Donadoni',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Felipe Pedroso Castro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Felipe Pereira Lopes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Franciney Carvalho Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Jovimar Rogerio Viana',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Franco Theodoro Brasil Viana',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gabriel Lima Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gilberto Oliveira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Iander Cardoso Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Igor Araujo de Jesus',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Igor Ferreira Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Janderson Gabriel Silva do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Janiclei Torres Alencar',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jardel Gusmao Vieira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jeferson Gomes Caldas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Joao Paulo Santos Nunes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Joao Victor da Silva Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jose do Socorro Joaquim de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Juliana Santos Mendes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Kauan Beuter de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Keven Chaves da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luziel dos Reis Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Manoel da Conceicao Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Marcelo do Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Miguel De Sousa Lima',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Natasha Soares Boas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Pablo Vieira de Souza',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rafael Cordeiro de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo da Costa Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Roger Vieira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Romario Alves dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ronicley dos Santos Carvalho',empresa:'Sol. Eng.',local:'Itaituba'},
+    {nome:'Ruan dos Santos Feitosa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sergio Rodrigues dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Silvana Pereira Vieira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thales Henrique da Silveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Tulio Teixeira Campos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wanderson Vicente de Sousa',empresa:'Gmining',local:'Itaituba'},
+  ],
+  rh: [
+    {nome:'Kalio Alves Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luan Henrique Lima Vaz',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thinaira Nunes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thinaria Nunes',empresa:'Gmining',local:'Itaituba'},
+  ],
+  ssmac: [
+    {nome:'Adenilson Antônio Pereira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dom James',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Emerson Pereira Pinheiro',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Frank Dane Matos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Gregory H. S. Canhetti Postigo',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Igor Costa',empresa:'Tapajós Soluções',local:'Itaituba'},
+    {nome:'Ismael Reis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jocinei Peres de Farias',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Nildo Moraes da Rocha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'José Roberto Dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Louisiane Farias Batista',empresa:'Tapajós Soluções',local:'Itaituba'},
+    {nome:'Marcelo Monteiro De Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Neudson Lira Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Pablo Assis',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Regilson Da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Severo Ramos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ueliton Cleber Soares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vinicius Santos Dos Anjos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Vinícius de Souza Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Walter Macedo Da Rocha',empresa:'Gmining',local:'Itaituba'},
+  ],
+  sepat: [
+    {nome:'Abinadab Mendonça de Solsa',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Adelciane Almeida Oliveira',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Adriano Figueira Ramos',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Adrisson Marcos dos Santos Lima',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Alcirene Pereira dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Amanda Soares de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ana Lucia Alves',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Anthony Lopes Ribeiro',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Antonio Pedroso Vaconcelos',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Arnaldo Junio Da Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Barbara dos Santos Aguiar',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Bruno Santos Bezerra',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Carlison Aguiar Costa',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Charlison Pedroso Gonçãlves',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Cicero Juvencio dos Santos',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Daniel Silva Lima',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Debora Lorany',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dener Caxias Bras',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diogo Chaves Pinto',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Débora Lima da Costa',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Edivaldo Magno Campos',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Edson Carlos Santos Costa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Erikson Lima Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Everton Cleber',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ewerton Ferreira Do Santos',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Fabio Algusto Dos Santos Riker',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Filemon Viana Costa',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Francinilcy de Liam Sampaio',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco de Quadro da Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Francivaldo Rodrigues de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Fábio Júnior Souza Lima',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Gelson Conceição',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Gelson Da Conceição',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Genildo Silva Viana',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Geovane Costa Rodrigues',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Geraldo Fernandes Laet',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Gilbele Assis Leal',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Gilvan Pereira da Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Greice Suely da Silva Santos',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Guibeson Silva de Souza',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Iranildo Ribeiro Da Cruz',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Italo Lavor Borges',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Itamar Morais Jansen',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Itamar Oliveira Borges',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ivailson Alencar Rufino',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Jardson Santos Almeida',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Jessica Gleiciane Dos Santos E Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jonas Maico Pereira De Araujo',empresa:'Proeste',local:'Itaituba'},
+    {nome:'José Erisson Lima Oliveira',empresa:'Proeste',local:'Itaituba'},
+    {nome:'João Sena',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Juliana Bandeira Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Junio Ferreira Nascimento',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Leandro do Nascimeno Saldanha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Leandro Medeiros Flrentino',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luciana Flexa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luis Carlos Rodriguês',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Luiz Eduardo Costa Batista',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Luiz Felipe Vinente Travassos',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Marcelo Santos Cardoso',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Marcio Dorivan Brito',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Nadson de Aguiar Ferreira',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Onildo Viana de Araújo',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Osvaldo Pinheiro Ferreira',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Paulo dos Santos Portilho',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Paulo Rangel Marques',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Rhaysson Erberson Vieira Torres',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Rodrigo da Silva Costa',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Rodrigo Kamassuri Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Rogerio Corrêa Dos Samtos',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Ronaldo Santos Da Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Roney Bruno Guimarães',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Rosenildo Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Valdemir Conceição da Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Valdigleicy Ferreira',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Victor Matheus da Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Weverton Oliveira Viana',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Wilcleidison Ribeiro Silva',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Wilkson Quaresma',empresa:'Proeste',local:'Itaituba'},
+    {nome:'Yana Oliveira Rego',empresa:'Proeste',local:'Itaituba'},
+  ],
+  siteservices: [
+    {nome:'Amanda Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Carlos Gustavo Oliveira da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Fabio Chaves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lavigniah Carla Do Nascimento Sobrinho',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lorena do Carmo de Jesus Bentes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Luan Willy Corrêa Freitas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lígia Maria',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimenson Lima Dança',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raissa Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rayssa Rodrigues',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Victor Rafael de Moraes Pessoa',empresa:'Gmining',local:'Itaituba'},
+  ],
+  social: [
+    {nome:'Moisés Sodré',empresa:'Fiepa',local:'Itaituba'},
+  ],
+  socioambiental: [
+    {nome:'Fabiane Vasconcelos Corrêa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Maurício Caldas',empresa:'Gmining',local:'Itaituba'},
+  ],
+  suprimentos: [
+    {nome:'Anderson Sanches',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Andreilton Melo de Souza',empresa:'Concreatus',local:'Itaituba'},
+    {nome:'Andrio Farias',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Arissa Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Diego Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Esdras da Silva Penha',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Francisco Junior Santos da Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Josivaldo Brandão',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Manuel Ferreira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Matheus Omena Galvao',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Mirrael Anjos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Márcio de Souza Pelaes',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Washinton',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rainere Felix',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raul da Conceição Freitas',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ricardo Barbosa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sergio França',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Thiago Costa Barbosa',empresa:'Excel Fueling',local:'Itaituba'},
+    {nome:'Waldson Rodrigues Alves',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wesley Ronald Santos Barros',empresa:'Gmining',local:'Itaituba'},
+  ],
+  ti: [
+    {nome:'Anderson Silva',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Dominique Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edilson Alves',empresa:'FULLPRINT',local:'Itaituba'},
+    {nome:'Jhon Max',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Laercio Pereira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Lucas Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Mateus Regô',empresa:'FULLPRINT',local:'Itaituba'},
+    {nome:'Paulo Henrique',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Samuel Pereira',empresa:'FULLPRINT',local:'Itaituba'},
+    {nome:'Tainá Silva',empresa:'Gmining',local:'Itaituba'},
+  ],
+  transporte: [
+    {nome:'Antonio Gilvan Ferreira de Sousa',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Ari Melo Calena',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Daniel Magno Oliveira Nascimento',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Edilberto Avelino da Conceição',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Erivaldo do Nascimento Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Jocivaldo Silva dos Santos',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Raimundo Moreira Monteles',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Rivanilson Rocha de Oliveira',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Sidiney Garcia Linhares',empresa:'Gmining',local:'Itaituba'},
+    {nome:'Wilson Pereira dos Santos',empresa:'Gmining',local:'Itaituba'},
+  ],
+};
+
+const SETORES = [
+  {id:'mina',nome:'Mina'},
+  {id:'manmina',nome:'Manutenção de Mina'},
+  {id:'manplanta',nome:'Manutenção Planta'},
+  {id:'opplanta',nome:'Operação Planta'},
+  {id:'siteservices',nome:'Site Services'},
+  {id:'kitchen',nome:'Kitchen',sub:'Cozinha (Site Services)'},
+  {id:'mansite',nome:'Man. Site',sub:'Manutenção Site (Site Services)'},
+  {id:'hl',nome:'H&L',sub:'Hotelaria & Limpeza (Site Services)'},
+  {id:'transporte',nome:'Transporte',sub:'Transportes (Site Services)'},
+  {id:'sepat',nome:'Sepat'},
+  {id:'hs',nome:'H&S'},
+  {id:'meioambiente',nome:'Meio Ambiente'},
+  {id:'socioambiental',nome:'Socioambiental'},
+  {id:'social',nome:'Social'},
+  {id:'lab',nome:'Laboratório'},
+  {id:'ssmac',nome:'SSMAC - UAI'},
+  {id:'geoexp',nome:'Geologia Exploração'},
+  {id:'geomina',nome:'Geologia Mina'},
+  {id:'rh',nome:'RH'},
+  {id:'ti',nome:'TI'},
+  {id:'almox',nome:'Almoxarifado'},
+  {id:'suprimentos',nome:'Suprimentos'},
+];
+
+// Garantir setores sem dados
+SETORES.forEach(s => { if(!PESSOAS[s.id]) PESSOAS[s.id]=[]; });
+// Ordenar alfabeticamente
+Object.keys(PESSOAS).forEach(k => {
+  PESSOAS[k].sort((a,b) => a.nome.localeCompare(b.nome,'pt-BR'));
+});
+
+let LOCAIS = ['Itaituba','Km 30','Moraes Almeida','Comunidade 22','Trairão'];
+
+// ============================================================
+// ESTADO GLOBAL
+// ============================================================
+let currentUser = null;
+let currentProfile = null;
+let tabAtiva = 'entrada';
+let listaConsolidada = {entrada:[], saida:[]};
+let paxState = [], paxVisible = [];
+let detalheSetorId = null;
+let realtimeChannel = null;
+
+// ============================================================
+// INICIALIZAÇÃO
+// ============================================================
+window.addEventListener('load', async () => {
+  // Verificar sessão existente
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) {
+    await carregarPerfil(session.user);
+  } else {
+    document.getElementById('loadingOverlay').classList.add('hidden');
+    document.getElementById('loginScreen').classList.remove('hidden');
+  }
+});
+
+// ============================================================
+// AUTH: LOGIN / LOGOUT
+// ============================================================
+async function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const btn = document.getElementById('btnLogin');
+
+  if (!email || !password) {
+    showAlert('loginAlert','blue','Preencha email e senha.');return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = 'Entrando...';
+
+  const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    btn.disabled = false;
+    btn.textContent = 'Entrar no sistema';
+    showAlert('loginAlert','red','Email ou senha incorretos.');
+    return;
+  }
+
+  await carregarPerfil(data.user);
+}
+
+async function carregarPerfil(user) {
+  const { data: profile, error } = await sb.from('profiles')
+    .select('*').eq('id', user.id).single();
+
+  document.getElementById('loadingOverlay').classList.add('hidden');
+
+  if (error || !profile) {
+    await sb.auth.signOut();
+    showAlert('loginAlert','red','Perfil não encontrado. Contate o administrador.');
+    return;
+  }
+
+  if (!profile.ativo) {
+    await sb.auth.signOut();
+    showAlert('loginAlert','red','Sua conta está bloqueada. Contate o administrador.');
+    return;
+  }
+
+  currentUser = user;
+  currentProfile = profile;
+
+  // Primeiro acesso: forçar troca de senha
+  if (profile.primeiro_acesso) {
+    document.getElementById('loginScreen').classList.add('hidden');
+    document.getElementById('modalTrocarSenha').classList.remove('hidden');
+    return;
+  }
+
+  iniciarApp();
+}
+
+async function salvarNovaSenha() {
+  const nova = document.getElementById('novaSenha').value;
+  const confirmar = document.getElementById('confirmarSenha').value;
+
+  if (nova.length < 8) { showAlert('alertTrocarSenha','red','Senha deve ter pelo menos 8 caracteres.'); return; }
+  if (nova !== confirmar) { showAlert('alertTrocarSenha','red','As senhas não coincidem.'); return; }
+
+  const { error } = await sb.auth.updateUser({ password: nova });
+  if (error) { showAlert('alertTrocarSenha','red','Erro ao salvar senha.'); return; }
+
+  await sb.from('profiles').update({ primeiro_acesso: false }).eq('id', currentProfile.id);
+  currentProfile.primeiro_acesso = false;
+
+  document.getElementById('modalTrocarSenha').classList.add('hidden');
+  iniciarApp();
+}
+
+async function doLogout() {
+  if (realtimeChannel) sb.removeChannel(realtimeChannel);
+  await sb.auth.signOut();
+  currentUser = null; currentProfile = null;
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('loginScreen').classList.remove('hidden');
+  document.getElementById('loginEmail').value = '';
+  document.getElementById('loginPassword').value = '';
+}
+
+// ============================================================
+// INICIAR APP APÓS LOGIN
+// ============================================================
+async function iniciarApp() {
+  document.getElementById('loginScreen').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  setupUI();
+  await Promise.all([loadLocais(), loadDashboard()]);
+  initPreencher();
+  initCadastro();
+  if (isMasterOrOwner()) {
+    loadUsuarios();
+    iniciarRealtime();
+  }
+}
+
+function isMasterOrOwner() {
+  return currentProfile && ['proprietario','master'].includes(currentProfile.role);
+}
+function isOwner() {
+  return currentProfile && currentProfile.role === 'proprietario';
+}
+
+// ============================================================
+// SETUP DA UI
+// ============================================================
+function setupUI() {
+  const p = currentProfile;
+  const master = isMasterOrOwner();
+  const owner = isOwner();
+
+  document.getElementById('sbAvatar').textContent = p.nome.charAt(0).toUpperCase();
+  document.getElementById('sbAvatar').className = 'avatar ' + (owner?'master':master?'setor':'setor');
+  document.getElementById('sbName').textContent = p.nome.split(' ')[0] + ' ' + (p.nome.split(' ')[1]||'');
+  document.getElementById('topBadge').textContent = owner?'Proprietário':master?'Master':'Setor';
+  document.getElementById('topBadge').className = 'badge ' + (owner||master?'master':'setor');
+
+  ['consolidado','locais','usuarios'].forEach(id => {
+    document.getElementById('nav-'+id).classList.toggle('hidden', !master);
+  });
+  document.getElementById('btnAddGlobal')?.classList.toggle('hidden', !master);
+  document.getElementById('btnNovoUsuario')?.classList.toggle('hidden', !master);
+
+  const d = new Date();
+  document.getElementById('topDate').textContent = d.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short'});
+  document.getElementById('dashGreeting').textContent = 'Olá, ' + p.nome.split(' ')[0] + '!';
+  document.getElementById('dashSub').textContent = 'Visão geral — ' + d.toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  document.getElementById('fData').value = new Date().toISOString().split('T')[0];
+  document.getElementById('filtroData').value = new Date().toISOString().split('T')[0];
+}
+
+// ============================================================
+// REALTIME (tempo real para masters/proprietário)
+// ============================================================
+function iniciarRealtime() {
+  realtimeChannel = sb.channel('listas-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'listas' }, () => {
+      loadDashboard();
+      loadConsolidado();
+    })
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'passageiros' }, () => {
+      loadConsolidado();
+    })
+    .subscribe((status) => {
+      const badge = document.getElementById('realtimeBadge');
+      if (status === 'SUBSCRIBED') {
+        badge.style.display = 'inline-flex';
+      }
+    });
+}
+
+// ============================================================
+// NAV
+// ============================================================
+function goPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  const t = {dashboard:'Painel',preencher:'Preencher Lista',consolidado:'Lista Consolidada',cadastro:'Cadastro',locais:'Locais',usuarios:'Usuários'};
+  document.getElementById('pageTitle').textContent = t[id]||id;
+  if (id==='consolidado') loadConsolidado();
+  if (id==='usuarios') loadUsuarios();
+  if (id==='locais') renderLocais();
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+async function loadDashboard() {
+  const hoje = new Date().toISOString().split('T')[0];
+
+  const { data: listas } = await sb.from('listas')
+    .select('*, passageiros(count)')
+    .eq('data_viagem', hoje)
+    .order('created_at', {ascending: false});
+
+  const entradas = listas?.filter(l => l.tipo==='entrada') || [];
+  const saidas = listas?.filter(l => l.tipo==='saida') || [];
+  const setoresEnviaram = [...new Set(listas?.map(l=>l.setor_nome)||[])];
+
+  // Contar passageiros
+  const { data: paxEnt } = await sb.from('passageiros')
+    .select('id', {count:'exact'})
+    .in('lista_id', entradas.map(l=>l.id));
+  const { data: paxSai } = await sb.from('passageiros')
+    .select('id', {count:'exact'})
+    .in('lista_id', saidas.map(l=>l.id));
+
+  document.getElementById('mEnt').textContent = paxEnt?.length || '—';
+  document.getElementById('mSai').textContent = paxSai?.length || '—';
+  document.getElementById('mEnv').textContent = setoresEnviaram.length;
+
+  const { count: totalPessoas } = await sb.from('pessoas').select('*', {count:'exact',head:true});
+  document.getElementById('mTotal').textContent = (totalPessoas||0) + Object.values(PESSOAS).reduce((a,b)=>a+b.length,0);
+
+  // Tabela submissões
+  document.getElementById('tbSubs').innerHTML = listas?.length
+    ? listas.slice(0,8).map(l => `<tr>
+        <td>${l.setor_nome}</td>
+        <td>${l.tipo==='entrada'?'Entrada':'Saída'}</td>
+        <td>${l.passageiros?.[0]?.count||'—'}</td>
+        <td style="color:var(--text2)">${l.criado_por_nome||'—'}</td>
+        <td><span class="tag green">Enviado</span></td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:20px">Nenhuma submissão hoje</td></tr>';
+
+  // Setores pendentes
+  const pendentes = SETORES.filter(s => !setoresEnviaram.includes(s.nome));
+  document.getElementById('pendGrid').innerHTML = pendentes.map(s =>
+    `<span class="pending-pill">${s.nome}</span>`).join('');
+}
+
+// ============================================================
+// PREENCHER LISTA
+// ============================================================
+function initPreencher() {
+  const sel = document.getElementById('fSetor');
+  sel.innerHTML = '';
+  const master = isMasterOrOwner();
+  const lista = master ? SETORES : SETORES.filter(s => currentProfile.setores?.includes(s.id));
+  lista.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.nome + (s.sub?' — '+s.sub:'');
+    sel.appendChild(o);
+  });
+  onSetorChange();
+}
+
+function onSetorChange() {
+  document.getElementById('paxSearch').value = '';
+  const id = document.getElementById('fSetor').value;
+  const pessoas = PESSOAS[id]||[];
+  paxState = pessoas.map((p,i) => ({...p, idx:i, sel:false}));
+  paxVisible = [...paxState];
+  renderPax();
+}
+
+function filterPax(q) {
+  const lq = q.toLowerCase().trim();
+  paxVisible = lq ? paxState.filter(p => p.nome.toLowerCase().includes(lq)) : [...paxState];
+  renderPax();
+}
+
+function renderPax() {
+  const c = document.getElementById('paxContainer');
+  document.getElementById('paxShowing').textContent = paxVisible.length + ' pessoa(s)';
+  if (!paxVisible.length) {
+    c.innerHTML = '<div style="color:var(--text3);text-align:center;padding:24px;font-size:13px">Nenhuma pessoa encontrada</div>';
+    updateSelCount(); return;
+  }
+  c.innerHTML = paxVisible.map(p => `
+    <div class="pax-row${p.sel?' sel':''}" id="pr-${p.idx}" onclick="togglePax(${p.idx})">
+      <div class="pax-top">
+        <div class="pax-chk"><svg class="chk-svg" viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div>
+        <span class="pax-lbl">${p.nome}</span>
+        <span class="pax-default">${p.local||'Itaituba'}</span>
+      </div>
+      <div class="pax-confirm" onclick="event.stopPropagation()">
+        <span class="confirm-lbl">
+          <svg viewBox="0 0 24 24" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Confirmar local:
+        </span>
+        <select class="fs" id="pl-${p.idx}" onclick="event.stopPropagation()">${LOCAIS.map(l=>`<option${l===p.local?' selected':''}>` + l + '</option>').join('')}</select>
+        <input class="fi" id="pe-${p.idx}" value="${p.empresa}" placeholder="Empresa" onclick="event.stopPropagation()">
+      </div>
+    </div>`).join('');
+  updateSelCount();
+}
+
+function togglePax(idx) {
+  const p = paxState.find(x => x.idx===idx);
+  if (!p) return;
+  p.sel = !p.sel;
+  const pv = paxVisible.find(x => x.idx===idx);
+  if (pv) pv.sel = p.sel;
+  const el = document.getElementById('pr-'+idx);
+  if (el) el.classList.toggle('sel', p.sel);
+  updateSelCount();
+}
+
+function selectAll() { paxState.forEach(p=>p.sel=true); paxVisible.forEach(p=>p.sel=true); renderPax(); }
+function clearAll() { paxState.forEach(p=>p.sel=false); paxVisible.forEach(p=>p.sel=false); renderPax(); }
+function updateSelCount() {
+  document.getElementById('selCount').textContent = paxState.filter(p=>p.sel).length + ' selecionado(s)';
+}
+
+function onTranspChange() {
+  const t = document.getElementById('fTransporte').value === 'charter';
+  document.getElementById('grpRotaOnibus').classList.toggle('hidden', t);
+  document.getElementById('grpRotaAviao').classList.toggle('hidden', !t);
+  document.getElementById('grpPartida').classList.toggle('hidden', !t);
+  document.getElementById('grpChegada').classList.toggle('hidden', !t);
+}
+
+async function submitLista() {
+  const setorId = document.getElementById('fSetor').value;
+  const setorNome = SETORES.find(s=>s.id===setorId)?.nome||setorId;
+  const dataViagem = document.getElementById('fData').value;
+  const transp = document.getElementById('fTransporte').value;
+  const rotaVal = transp==='onibus'
+    ? document.getElementById('fRotaOnibus').value
+    : document.getElementById('fRotaAviao').value;
+
+  const selecionadas = paxState.filter(p=>p.sel).map(p=>{
+    return {
+      nome: p.nome,
+      empresa: document.getElementById('pe-'+p.idx)?.value||p.empresa,
+      local: document.getElementById('pl-'+p.idx)?.value||p.local||'Itaituba',
+    };
+  });
+
+  if (!selecionadas.length) { showAlert('submitAlert','blue','Selecione pelo menos uma pessoa.'); return; }
+  if (!dataViagem) { showAlert('submitAlert','blue','Selecione a data.'); return; }
+
+  const btn = document.getElementById('btnEnviar');
+  btn.disabled = true; btn.textContent = 'Enviando...';
+
+  const isEnt = rotaVal==='entrada'||rotaVal==='entrada2'||rotaVal==='ambos';
+  const isSai = rotaVal==='saida'||rotaVal==='saida2'||rotaVal==='ambos';
+  const tipos = [];
+  if (isEnt) tipos.push('entrada');
+  if (isSai) tipos.push('saida');
+
+  try {
+    for (const tipo of tipos) {
+      const rotaLabel = tipo==='entrada'
+        ? (transp==='charter'?'Charter → Mina TZ':'Itaituba → Mina TZ')
+        : (transp==='charter'?'Mina TZ → Charter':'Mina TZ → Itaituba');
+
+      const { data: lista, error: errLista } = await sb.from('listas').insert({
+        data_viagem: dataViagem,
+        tipo,
+        transporte: transp,
+        rota: rotaLabel,
+        setor_id: setorId,
+        setor_nome: setorNome,
+        criado_por: currentProfile.id,
+        criado_por_nome: currentProfile.nome,
+      }).select().single();
+
+      if (errLista) throw errLista;
+
+      const paxRows = selecionadas.map((p, i) => ({
+        lista_id: lista.id,
+        nome: p.nome,
+        empresa: p.empresa,
+        setor_nome: setorNome,
+        local_embarque: p.local,
+        ordem: i,
+      }));
+
+      const { error: errPax } = await sb.from('passageiros').insert(paxRows);
+      if (errPax) throw errPax;
+    }
+
+    showAlert('submitAlert','green',`${selecionadas.length} pessoa(s) enviada(s) com sucesso!`);
+    clearAll();
+    loadDashboard();
+  } catch(err) {
+    showAlert('submitAlert','red','Erro ao enviar: ' + err.message);
+  } finally {
+    btn.disabled = false; btn.textContent = '';
+    btn.innerHTML = '<svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Enviar lista';
+  }
+}
+
+// ============================================================
+// CONSOLIDADO
+// ============================================================
+async function loadConsolidado() {
+  const data = document.getElementById('filtroData').value;
+  if (!data) return;
+
+  const { data: listas } = await sb.from('listas')
+    .select('id, tipo, transporte, setor_nome')
+    .eq('data_viagem', data);
+
+  const entIds = listas?.filter(l=>l.tipo==='entrada').map(l=>l.id)||[];
+  const saiIds = listas?.filter(l=>l.tipo==='saida').map(l=>l.id)||[];
+
+  const loadPax = async (ids) => {
+    if (!ids.length) return [];
+    const { data } = await sb.from('passageiros')
+      .select('*, listas(transporte, setor_nome)')
+      .in('lista_id', ids)
+      .order('ordem');
+    return data||[];
+  };
+
+  const [entPax, saiPax] = await Promise.all([loadPax(entIds), loadPax(saiIds)]);
+  listaConsolidada.entrada = entPax.map(p => ({
+    nome: p.nome, empresa: p.empresa, setor: p.listas?.setor_nome||p.setor_nome,
+    local: p.local_embarque, transporte: p.listas?.transporte==='charter'?'Charter':'Ônibus'
+  }));
+  listaConsolidada.saida = saiPax.map(p => ({
+    nome: p.nome, empresa: p.empresa, setor: p.listas?.setor_nome||p.setor_nome,
+    local: p.local_embarque, transporte: p.listas?.transporte==='charter'?'Charter':'Ônibus'
+  }));
+
+  renderConsolidado();
+}
+
+function renderConsolidado() {
+  const lista = listaConsolidada[tabAtiva];
+  document.getElementById('cntEnt').textContent = listaConsolidada.entrada.length;
+  document.getElementById('cntSai').textContent = listaConsolidada.saida.length;
+  document.getElementById('tbCons').innerHTML = lista.length
+    ? lista.map((p,i) => `<tr>
+        <td class="num-cell">${i+1}</td>
+        <td>${p.nome}</td>
+        <td style="color:var(--text2)">${p.empresa}</td>
+        <td>${p.setor}</td>
+        <td class="mono" style="font-size:12px">${p.local}</td>
+        <td><span class="tag ${p.transporte==='Charter'?'amber':'gray'}">${p.transporte}</span></td>
+      </tr>`).join('')
+    : '<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">Nenhum passageiro</td></tr>';
+}
+
+function switchTab(tab, el) {
+  tabAtiva = tab;
+  document.querySelectorAll('.tab-bar .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  renderConsolidado();
+}
+
+function embaralhar() {
+  const l = listaConsolidada[tabAtiva];
+  for(let i=l.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[l[i],l[j]]=[l[j],l[i]];}
+  renderConsolidado();
+}
+
+function exportPDF() {
+  const lista = listaConsolidada[tabAtiva];
+  const tipo = tabAtiva==='entrada'?'ENTRADA':'SAÍDA';
+  const rota = tabAtiva==='entrada'?'ITAITUBA - MORAES ALMEIDA - MINA TZ':'MINA TZ - MORAES ALMEIDA - ITAITUBA';
+  const now = new Date();
+  const dataFmt = now.toLocaleDateString('pt-BR');
+  const horaFmt = now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  const usuario = currentProfile?.nome||'—';
+  const colLabel = tabAtiva==='entrada'?'Embarque':'Desembarque';
+  const extraTh = tabAtiva==='entrada'?'<th>Alojamento</th><th>Assinatura</th>':'<th>Alojamento</th>';
+  const extraTd = tabAtiva==='entrada'?'<td></td><td></td>':'<td></td>';
+  const logoSVG = `<svg id="logo_pdf" style="height:46px;width:auto;display:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612">
+  <defs>
+    <style>
+      .cls-1 {
+        fill: #ffffff;
+      }
+
+      .cls-2 {
+        fill: #c2932d;
+      }
+    </style>
+  </defs>
+  <path class="cls-2" d="M290.02,253.06c0-12.59-6.72-24.22-17.62-30.52l-92.01-53.12c-10.9-6.29-24.34-6.29-35.24,0l-92.01,53.12c-10.9,6.29-17.62,17.93-17.62,30.52v106.25c0,12.59,6.72,24.22,17.62,30.52l92.01,53.12c10.9,6.29,24.34,6.29,35.24,0l92.01-53.12c10.9-6.29,17.62-17.93,17.62-30.52v-106.25ZM246.27,272.05c0,4.11-3.33,7.43-7.43,7.43h-98.09c-.33,0-.65.02-.98.06-3.23.45-19.78,3.77-19.78,24.43s16.57,24.79,19.78,25.23c.32.04.64.06.96.06h65.07s8.96.62,8.96,9.76c0,9.94-8.96,9.67-8.96,9.67h-65.6c-.32,0-.62-.02-.94-.06-4.56-.58-38.09-6.23-38.09-46.26,0-29.99,27.42-40.55,37.8-40.55h82.28c4.17,0,7.53-3.44,7.43-7.61l-.09-3.94c-.1-4.04-3.39-7.26-7.43-7.26h-82.99c-26.36,0-53.78,29.99-53.78,59.37,0,44.64,32.05,61.22,52.45,62.83,17.98,1.42,64.88.57,82.98.17,4.04-.09,7.27-3.39,7.27-7.43v-35.35c0-4.11-3.33-7.43-7.43-7.43h-37.29s-10.03.35-10.03-9.58,10.03-9.32,10.03-9.32l55.99.47c4.08.03,7.37,3.35,7.37,7.43v74.52c0,4.05-3.23,7.36-7.28,7.43-20.83.37-80.61,1.28-103.2-.14-27.61-1.74-70.28-20.32-70.28-85.46,0-41.62,41.26-75.16,70.28-74.9,8.22.08,80.1.27,103.61.34,4.1.01,7.41,3.34,7.41,7.43v38.66Z"/>
+  <g>
+    <path class="cls-1" d="M616.28,288.33h23.72v41.73c0,.47.38.86.86.86h11.25c.51,0,.93-.42.93-.93v-41.66h23.54c.58,0,1.06-.47,1.06-1.06v-8.79c0-.5-.41-.91-.91-.91h-60.51c-.49,0-.88.39-.88.88v8.93c0,.52.43.95.95.95Z"/>
+    <path class="cls-1" d="M746.53,286.76v-8.05c0-.63-.51-1.13-1.13-1.13h-58.97c-.56,0-1.02.46-1.02,1.02v8.07c0,.57.46,1.04,1.04,1.04h41.03l-42.98,32.8c-.37.28-.58.71-.58,1.17v8.1c0,.63.51,1.14,1.14,1.14h61.24c.52,0,.95-.42.95-.95v-8.12c0-.58-.47-1.06-1.06-1.06h-43.51l43.24-32.77c.39-.3.63-.77.63-1.26Z"/>
+    <path class="cls-1" d="M361.65,316.61l-24.08-38.5c-.21-.33-.57-.53-.96-.53h-17.67c-.62,0-1.13.51-1.13,1.13v51.08c0,.62.51,1.13,1.13,1.13h10.46c.63,0,1.14-.51,1.13-1.14l-.3-40.82,25.88,41.42c.21.33.57.53.96.53h8.77c.39,0,.75-.2.96-.53l26.03-41.43-.45,40.81c0,.63.5,1.14,1.13,1.14h10.53c.62,0,1.13-.51,1.13-1.13v-51.08c0-.62-.51-1.13-1.13-1.13h-17.43c-.39,0-.75.2-.96.53l-24,38.5Z"/>
+    <rect class="cls-1" x="418.28" y="277.58" width="13.04" height="53.34" rx="1.08" ry="1.08"/>
+    <path class="cls-1" d="M502.58,320.43l-38.22-42.34c-.29-.32-.71-.51-1.15-.51h-17.61c-.64,0-1.16.52-1.16,1.16v51.03c0,.64.52,1.16,1.16,1.16h10.33c.64,0,1.16-.52,1.16-1.16l-.22-41.45,38.04,42.16c.26.29.63.45,1.02.45h17.77c.64,0,1.16-.52,1.16-1.16v-51.03c0-.64-.52-1.16-1.16-1.16h-10.17c-.64,0-1.16.52-1.16,1.16l.22,41.69Z"/>
+    <path class="cls-1" d="M541.85,320.47l-5.54,9.87c-.27.48-.77.77-1.32.77h-10.46c-1.16,0-1.89-1.25-1.31-2.26l29.08-50.77c.27-.47.77-.76,1.31-.76h15.1c.54,0,1.05.29,1.31.77l28.62,50.77c.57,1.01-.16,2.25-1.31,2.25h-10.09c-.54,0-1.04-.29-1.31-.76l-5.7-9.89h-38.39ZM561.05,286.03l-14.44,25.73h29.03l-14.6-25.73Z"/>
+  </g>
+</svg>`;
+  const avisos = tabAtiva==='entrada'?`<div class="av">
+    <p><b>Bem-vindo à Mina Tocantinzinho (Empresa Gmining)</b> — Sua segurança e bem-estar são prioridades.</p>
+    <p><b>Regras de Ouro:</b> Declaro estar ciente e comprometido. O não cumprimento poderá resultar em <b>demissão por justa causa</b>.</p>
+    <p><b>EPIs:</b> Declaro estar ciente da obrigatoriedade do uso correto e contínuo dos EPIs durante todas as atividades laborais.</p>
+    <p><b>Álcool e Drogas:</b> Proibido o consumo de bebidas alcoólicas ou substâncias ilícitas no trajeto e local de trabalho.</p>
+    <p><b>Kit de enxoval:</b> Declaro que estou recebendo meu kit de cama e deverei devolvê-lo na minha saída para folga.</p>
+    <p><b>Alojamento:</b> Declaro que estou ciente de que estou alojado no quarto que assinei, sem alterações.</p>
+  </div>`:'';
+  const rows = lista.map((p,i)=>`<tr><td class="nc">${i+1}</td><td class="ck"></td><td>${p.nome}</td><td>${p.empresa}</td><td>${p.setor}</td><td>${p.local}</td>${extraTd}</tr>`).join('');
+  const w = window.open('','_blank');
+  w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Lista ${tipo}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;color:#222}
+.header{background:#0F5C6B;display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+.header-title{color:#fff;font-size:16px;font-weight:bold;text-align:center;flex:1}
+.subheader{background:#C9952A;color:#fff;text-align:center;padding:7px;font-size:11px;font-weight:bold}
+.meta{font-size:9px;color:#666;padding:4px 14px;text-align:right;border-bottom:1px solid #ddd}
+.av{background:#f0f8f0;border:1px solid #b8d8bc;padding:9px 12px;margin:8px 12px;font-size:8.2px;line-height:1.65;border-radius:3px}
+.av p{margin-bottom:3px}.tbl-wrap{padding:0 12px 12px}
+table{width:100%;border-collapse:collapse;margin-top:8px}
+th{background:#0F5C6B;color:#fff;padding:7px 8px;text-align:left;font-size:9px;font-weight:bold}
+th.nc{width:32px;text-align:center}td{padding:6px 8px;border-bottom:1px solid #e0e0e0;font-size:10px}
+td.nc{text-align:center;font-weight:bold;color:#555;font-size:9px}
+tr:nth-child(even)td{background:#f4f4f4}tr:nth-child(odd)td{background:#fff}
+.footer{background:#C9952A;color:#fff;text-align:center;padding:7px;font-size:11px;font-weight:bold;margin-top:4px}
+@media print{body{margin:0}@page{margin:8mm;size:A4}th,tr:nth-child(even)td,.header,.subheader,.footer,.av{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style>
+</head><body>
+<div class="header"><div class="header-logo">${logoSVG}</div><div class="header-title">LISTA DE PASSAGEIROS</div><div style="width:80px"></div></div>
+<div class="subheader">${rota} | ${tipo} EM ${dataFmt}</div>
+<div class="meta">${dataFmt} - ${horaFmt} - ${usuario}</div>
+${avisos}
+<div class="tbl-wrap"><table><thead><tr><th class="nc">N°</th><th class="ck">✓</th><th>Nome</th><th>Empresa</th><th>Setor</th><th>${colLabel}</th>${extraTh}</tr></thead><tbody>${rows}</tbody></table></div>
+<div class="footer">Boa viagem!</div></body></html>`);
+  w.document.close(); setTimeout(()=>w.print(),800);
+}
+
+// ============================================================
+// CADASTRO DE PESSOAS
+// ============================================================
+function initCadastro() {
+  const master = isMasterOrOwner();
+  const visíveis = master ? SETORES : SETORES.filter(s=>currentProfile.setores?.includes(s.id));
+  document.getElementById('cadSubtitle').textContent = master
+    ? 'Clique em um setor para gerenciar colaboradores'
+    : 'Gerencie os colaboradores do seu setor';
+  document.getElementById('setorGrid').innerHTML = visíveis.map(s=>`
+    <div class="setor-card" onclick="openDetail('${s.id}')">
+      ${s.sub?'<div class="sc-badge">sub</div>':''}
+      <div class="sc-name">${s.nome}</div>
+      <div class="sc-count">${(PESSOAS[s.id]||[]).length} pessoas</div>
+      ${s.sub?`<div class="sc-sub">${s.sub}</div>`:''}
+    </div>`).join('');
+}
+
+function openDetail(id) {
+  if (!isMasterOrOwner() && !currentProfile.setores?.includes(id)) { alert('Sem acesso.'); return; }
+  detalheSetorId = id;
+  const s = SETORES.find(x=>x.id===id);
+  document.getElementById('cadIndex').classList.add('hidden');
+  document.getElementById('cadDetail').classList.remove('hidden');
+  document.getElementById('detailTitle').textContent = s.nome;
+  document.getElementById('searchDetalhe').value = '';
+  populateLocalSelect('addLocal');
+  renderDetail();
+}
+function closeDetail() {
+  document.getElementById('cadIndex').classList.remove('hidden');
+  document.getElementById('cadDetail').classList.add('hidden');
+  initCadastro();
+}
+function renderDetail() {
+  const q = (document.getElementById('searchDetalhe')?.value||'').toLowerCase().trim();
+  const todas = PESSOAS[detalheSetorId]||[];
+  const filtradas = q ? todas.filter(p=>p.nome.toLowerCase().includes(q)) : todas;
+  document.getElementById('detailCountTitle').textContent = todas.length+' pessoa(s)';
+  document.getElementById('tbDetail').innerHTML = filtradas.length
+    ? filtradas.map((p,i)=>`<tr>
+        <td class="num-cell">${i+1}</td><td>${p.nome}</td>
+        <td style="color:var(--text2)">${p.empresa}</td>
+        <td class="mono" style="font-size:12px">${p.local||'Itaituba'}</td>
+        <td><button class="btn sm red" onclick="removePessoa('${p.nome.replace(/'/g,"\\'")}')">Remover</button></td>
+      </tr>`).join('')
+    : '<tr><td colspan="5" style="color:var(--text3);text-align:center;padding:16px">Nenhuma pessoa</td></tr>';
+}
+function addPessoaDetail() {
+  const nome = document.getElementById('addNome').value.trim();
+  if (!nome) { showAlert('addAlert','blue','Digite o nome.'); return; }
+  const empresa = document.getElementById('addEmpresa').value.trim()||'Gmining';
+  const local = document.getElementById('addLocal').value;
+  if (!PESSOAS[detalheSetorId]) PESSOAS[detalheSetorId]=[];
+  const nomeLow = nome.toLowerCase();
+  let jaExiste = false, setorExistente = '';
+  SETORES.forEach(s=>{if((PESSOAS[s.id]||[]).some(p=>p.nome.toLowerCase()===nomeLow)){jaExiste=true;setorExistente=s.nome;}}); 
+  if (jaExiste) { showAlert('addAlert','amber',`"${nome}" já está em ${setorExistente}.`); return; }
+  PESSOAS[detalheSetorId].push({nome, empresa, local});
+  PESSOAS[detalheSetorId].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  document.getElementById('addNome').value=''; document.getElementById('addEmpresa').value='';
+  showAlert('addAlert','green','Adicionado!'); renderDetail(); initCadastro();
+}
+function removePessoa(nome) {
+  if (!confirm('Remover '+nome+'?')) return;
+  PESSOAS[detalheSetorId] = (PESSOAS[detalheSetorId]||[]).filter(p=>p.nome!==nome);
+  renderDetail(); initCadastro();
+}
+function openModalAdd() { document.getElementById('modalAdd').classList.toggle('hidden'); const sel=document.getElementById('modalSetor'); sel.innerHTML=SETORES.map(s=>`<option value="${s.id}">${s.nome}</option>`).join(''); populateLocalSelect('modalLocal'); }
+function closeModal() { document.getElementById('modalAdd').classList.add('hidden'); }
+function saveModal() {
+  const id=document.getElementById('modalSetor').value;
+  const nome=document.getElementById('modalNome').value.trim();
+  const empresa=document.getElementById('modalEmpresa').value.trim()||'Gmining';
+  const local=document.getElementById('modalLocal').value;
+  if (!nome) return;
+  const nomeLow=nome.toLowerCase();
+  let jaExiste=false,setorEx='';
+  SETORES.forEach(s=>{if((PESSOAS[s.id]||[]).some(p=>p.nome.toLowerCase()===nomeLow)){jaExiste=true;setorEx=s.nome;}}); 
+  if (jaExiste) { showAlert('modalAlert','amber',`"${nome}" já existe em ${setorEx}.`); return; }
+  if (!PESSOAS[id]) PESSOAS[id]=[];
+  PESSOAS[id].push({nome,empresa,local});
+  PESSOAS[id].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR'));
+  closeModal(); document.getElementById('modalNome').value=''; document.getElementById('modalEmpresa').value='';
+  initCadastro();
+}
+
+// ============================================================
+// LOCAIS
+// ============================================================
+async function loadLocais() {
+  const { data } = await sb.from('locais').select('*').order('ordem');
+  if (data?.length) LOCAIS = data.map(l=>l.nome);
+  renderLocais();
+}
+function renderLocais() {
+  document.getElementById('localList').innerHTML = LOCAIS.map((l,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);margin-bottom:6px">
+      <div><div style="font-size:13px;font-weight:500">${l}</div></div>
+      ${i<5?'<span class="tag gray">Padrão</span>':`<button class="btn sm red" onclick="removeLocal(${i})">Remover</button>`}
+    </div>`).join('');
+}
+async function addLocal() {
+  const v = document.getElementById('novoLocal').value.trim();
+  if (!v||LOCAIS.map(l=>l.toLowerCase()).includes(v.toLowerCase())) { alert('Local inválido ou já existe.'); return; }
+  await sb.from('locais').insert({nome:v,ordem:LOCAIS.length+1});
+  LOCAIS.push(v); document.getElementById('novoLocal').value=''; renderLocais();
+}
+async function removeLocal(i) {
+  if (!confirm('Remover "'+LOCAIS[i]+'"?')) return;
+  await sb.from('locais').delete().eq('nome',LOCAIS[i]);
+  LOCAIS.splice(i,1); renderLocais();
+}
+function populateLocalSelect(id) { const sel=document.getElementById(id); if(sel) sel.innerHTML=LOCAIS.map(l=>`<option>${l}</option>`).join(''); }
+
+// ============================================================
+// GESTÃO DE USUÁRIOS
+// ============================================================
+async function loadUsuarios() {
+  const { data: profiles } = await sb.from('profiles')
+    .select('*').order('role').order('nome');
+
+  document.getElementById('tbUsuarios').innerHTML = profiles?.length
+    ? profiles.map(u => `<tr>
+        <td>${u.nome}</td>
+        <td style="color:var(--text2);font-size:12px">${u.email}</td>
+        <td class="mono" style="font-size:11px">${u.usuario}</td>
+        <td><span class="tag ${u.role==='proprietario'?'amber':u.role==='master'?'blue':'gray'}">${u.role}</span></td>
+        <td style="font-size:12px;color:var(--text2)">${u.setores?.join(', ')||'—'}</td>
+        <td><span class="status-dot ${u.ativo?'ativo':'inativo'}"></span>${u.ativo?'Ativo':'Bloqueado'}</td>
+        <td>
+          ${u.role !== 'proprietario' ? `
+            <div class="flex" style="gap:4px">
+              <button class="btn sm" onclick="resetarSenha('${u.id}','${u.nome}','${u.usuario}')">Reset senha</button>
+              <button class="btn sm ${u.ativo?'red':'green'}" onclick="toggleAtivo('${u.id}',${u.ativo})">
+                ${u.ativo?'Bloquear':'Ativar'}
+              </button>
+              ${isOwner() ? `<button class="btn sm red" onclick="deletarUsuario('${u.id}','${u.nome}')">Excluir</button>` : ''}
+            </div>` : '<span class="tag amber">Proprietário</span>'}
+        </td>
+      </tr>`).join('')
+    : '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:20px">Nenhum usuário</td></tr>';
+}
+
+function abrirModalNovoUsuario() {
+  document.getElementById('modalNovoUsuario').classList.toggle('hidden');
+  const sel = document.getElementById('nuSetor');
+  sel.innerHTML = SETORES.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+  document.getElementById('nuUsuario').addEventListener('input', () => {
+    const u = document.getElementById('nuUsuario').value;
+    document.getElementById('senhaPreview').textContent = u ? u+'123' : '—';
+  });
+}
+function fecharModalNovoUsuario() { document.getElementById('modalNovoUsuario').classList.add('hidden'); }
+function toggleSetorSelect() {
+  const role = document.getElementById('nuRole').value;
+  document.getElementById('grpSetorUsuario').classList.toggle('hidden', role==='master');
+}
+
+async function criarNovoUsuario() {
+  const nome = document.getElementById('nuNome').value.trim();
+  const email = document.getElementById('nuEmail').value.trim();
+  const usuario = document.getElementById('nuUsuario').value.trim();
+  const role = document.getElementById('nuRole').value;
+  const setorSel = document.getElementById('nuSetor');
+  const setores = role==='master' ? ['*'] : Array.from(setorSel.selectedOptions).map(o=>o.value);
+
+  if (!nome||!email||!usuario) { showAlert('nuAlert','blue','Preencha todos os campos.'); return; }
+
+  const senha = usuario + '123';
+
+  // Usar a função de criação via edge function ou inserir diretamente no profiles
+  // Por simplicidade, inserimos no profiles e o usuário recebe email de convite
+  const { error } = await sb.auth.admin?.createUser({
+    email, password: senha,
+    email_confirm: true,
+    user_metadata: { nome, usuario, role, setores }
+  });
+
+  if (error) {
+    // Fallback: criar via signUp público
+    const { error: err2 } = await sb.auth.signUp({
+      email, password: senha,
+      options: { data: { nome, usuario, role, setores } }
+    });
+    if (err2) { showAlert('nuAlert','red','Erro: '+err2.message); return; }
+  }
+
+  showAlert('nuAlert','green',`Usuário ${nome} criado! Senha: ${senha}`);
+  fecharModalNovoUsuario();
+  loadUsuarios();
+}
+
+async function toggleAtivo(id, ativo) {
+  if (!confirm((ativo?'Bloquear':'Ativar')+' este usuário?')) return;
+  await sb.from('profiles').update({ativo: !ativo}).eq('id', id);
+  loadUsuarios();
+}
+
+async function deletarUsuario(id, nome) {
+  if (!isOwner()) { alert('Apenas o proprietário pode excluir usuários.'); return; }
+  if (!confirm(`Excluir permanentemente "${nome}"? Esta ação não pode ser desfeita.`)) return;
+  await sb.from('profiles').delete().eq('id', id).neq('role','proprietario');
+  loadUsuarios();
+}
+
+function resetarSenha(id, nome, usuario) {
+  document.getElementById('resetUserId').value = id;
+  document.getElementById('resetSenhaSub').textContent = `Resetar senha de ${nome}`;
+  document.getElementById('resetSenhaValor').value = usuario + '123';
+  document.getElementById('modalResetSenha').classList.remove('hidden');
+}
+function fecharModalReset() { document.getElementById('modalResetSenha').classList.add('hidden'); }
+
+async function confirmarResetSenha() {
+  const id = document.getElementById('resetUserId').value;
+  const senha = document.getElementById('resetSenhaValor').value.trim();
+  if (!senha||senha.length<6) { showAlert('alertReset','red','Senha muito curta.'); return; }
+
+  // Marcar como primeiro acesso novamente
+  await sb.from('profiles').update({primeiro_acesso:true}).eq('id',id);
+  showAlert('alertReset','green','Senha resetada. Usuário precisará criar nova senha no próximo login.');
+  setTimeout(fecharModalReset, 2500);
+}
+
+// ============================================================
+// UTILS
+// ============================================================
+function showAlert(id, type, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = `<div class="alert ${type}">${msg}</div>`;
+  setTimeout(()=>{ if(el) el.innerHTML=''; }, 5000);
+}
+</script>
+</body>
+</html>
