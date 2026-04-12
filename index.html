@@ -273,6 +273,34 @@ table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
   </div>
 </div>
 
+<!-- MODAL: CONFIRMAÇÃO DE ENVIO -->
+<div class="modal-overlay hidden" id="modalConfirmacao">
+  <div class="modal-box" style="width:500px;max-width:95vw">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+      <div style="width:44px;height:44px;border-radius:50%;background:var(--green-bg);border:1px solid var(--green-border);display:flex;align-items:center;justify-content:center;flex-shrink:0">
+        <svg style="width:20px;height:20px;stroke:var(--green);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+      <div>
+        <div class="modal-title" style="margin:0">Lista enviada com sucesso!</div>
+        <div style="font-size:12px;color:var(--text2)" id="confProtocolo">Protocolo: —</div>
+      </div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:14px">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.05em">Detalhes do envio</div>
+      <div id="confDetalhes" style="font-size:13px;color:var(--text2);line-height:1.8"></div>
+    </div>
+    <div style="background:var(--bg3);border:1px solid var(--border);border-radius:var(--r);padding:12px;margin-bottom:16px;max-height:200px;overflow-y:auto">
+      <div style="font-size:11px;color:var(--text3);margin-bottom:8px;font-weight:600;text-transform:uppercase;letter-spacing:.05em" id="confNomesTitle">Passageiros enviados</div>
+      <div id="confNomes" style="font-size:13px"></div>
+    </div>
+    <div class="alert blue" style="font-size:12px;margin-bottom:14px">
+      <svg style="width:13px;height:13px;stroke:var(--blue);fill:none;stroke-width:2;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Precisa corrigir? Veja <strong>Minhas listas enviadas hoje</strong> abaixo para remover passageiros.
+    </div>
+    <button class="btn green" style="width:100%;justify-content:center" onclick="fecharConfirmacao()">Entendido</button>
+  </div>
+</div>
+
 <!-- LOGIN -->
 <div class="login-screen" id="loginScreen">
   <div class="login-box">
@@ -399,8 +427,28 @@ table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
           </div>
         </div>
         <div class="grid4 mb16">
-          <div class="metric"><div class="metric-label">Entradas hoje</div><div class="metric-value green" id="mEnt">—</div><div class="metric-sub">passageiros</div></div>
-          <div class="metric"><div class="metric-label">Saídas hoje</div><div class="metric-value blue" id="mSai">—</div><div class="metric-sub">passageiros</div></div>
+          <div class="metric">
+            <div class="metric-label">Entradas hoje</div>
+            <div style="display:flex;align-items:baseline;gap:6px">
+              <div class="metric-value green" id="mEnt">—</div>
+              <div style="font-size:13px;color:var(--text3);font-family:var(--mono)">/80</div>
+            </div>
+            <div style="margin-top:6px;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+              <div id="mEntBar" style="height:100%;background:var(--green);border-radius:2px;width:0%;transition:width .3s"></div>
+            </div>
+            <div class="metric-sub" id="mEntSub">limite: 80 passageiros</div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Saídas hoje</div>
+            <div style="display:flex;align-items:baseline;gap:6px">
+              <div class="metric-value blue" id="mSai">—</div>
+              <div style="font-size:13px;color:var(--text3);font-family:var(--mono)">/80</div>
+            </div>
+            <div style="margin-top:6px;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+              <div id="mSaiBar" style="height:100%;background:var(--blue);border-radius:2px;width:0%;transition:width .3s"></div>
+            </div>
+            <div class="metric-sub" id="mSaiSub">limite: 80 passageiros</div>
+          </div>
           <div class="metric"><div class="metric-label">Setores enviaram</div><div class="metric-value amber" id="mEnv">0</div><div class="metric-sub">hoje</div></div>
           <div class="metric"><div class="metric-label">Total cadastrados</div><div class="metric-value purple" id="mTotal">—</div><div class="metric-sub">colaboradores</div></div>
         </div>
@@ -478,6 +526,20 @@ table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
               Enviar lista
             </button>
             <div id="submitAlert" style="margin-top:10px"></div>
+          </div>
+
+          <!-- MINHAS LISTAS ENVIADAS HOJE -->
+          <div class="card mt16" id="minhasListasCard" style="max-width:800px;margin-top:16px;display:none">
+            <div class="flex-between mb12">
+              <div class="card-title" style="margin:0">Minhas listas enviadas hoje</div>
+              <button class="btn sm blue" onclick="loadMinhasListas()">
+                <svg viewBox="0 0 24 24" style="width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                Atualizar
+              </button>
+            </div>
+            <div id="minhasListasContent">
+              <div style="color:var(--text3);text-align:center;padding:16px;font-size:13px">Carregando...</div>
+            </div>
           </div>
         </div>
       </div>
@@ -1924,6 +1986,7 @@ function goPage(id, el) {
   if (id==='consolidado') loadConsolidado();
   if (id==='usuarios') loadUsuarios();
   if (id==='locais') renderLocais();
+  if (id==='preencher') loadMinhasListas();
 }
 
 // ============================================================
@@ -1949,9 +2012,31 @@ async function loadDashboard() {
     .select('id', {count:'exact'})
     .in('lista_id', saidas.map(l=>l.id));
 
-  document.getElementById('mEnt').textContent = paxEnt?.length || '—';
-  document.getElementById('mSai').textContent = paxSai?.length || '—';
+  const totalEnt = paxEnt?.length || 0;
+  const totalSai = paxSai?.length || 0;
+  const LIMITE = 80;
+
+  document.getElementById('mEnt').textContent = totalEnt || '—';
+  document.getElementById('mSai').textContent = totalSai || '—';
   document.getElementById('mEnv').textContent = setoresEnviaram.length;
+
+  // Barras de progresso
+  const pctEnt = Math.min(Math.round((totalEnt/LIMITE)*100), 100);
+  const pctSai = Math.min(Math.round((totalSai/LIMITE)*100), 100);
+  const barEnt = document.getElementById('mEntBar');
+  const barSai = document.getElementById('mSaiBar');
+  if (barEnt) {
+    barEnt.style.width = pctEnt + '%';
+    barEnt.style.background = pctEnt >= 100 ? 'var(--red)' : pctEnt >= 80 ? 'var(--amber)' : 'var(--green)';
+  }
+  if (barSai) {
+    barSai.style.width = pctSai + '%';
+    barSai.style.background = pctSai >= 100 ? 'var(--red)' : pctSai >= 80 ? 'var(--amber)' : 'var(--blue)';
+  }
+  const subEnt = document.getElementById('mEntSub');
+  const subSai = document.getElementById('mSaiSub');
+  if (subEnt) subEnt.textContent = totalEnt >= LIMITE ? '⚠️ Limite atingido!' : `${LIMITE - totalEnt} vagas restantes`;
+  if (subSai) subSai.textContent = totalSai >= LIMITE ? '⚠️ Limite atingido!' : `${LIMITE - totalSai} vagas restantes`;
 
   const { count: totalPessoas } = await sb.from('pessoas').select('*', {count:'exact',head:true});
   document.getElementById('mTotal').textContent = (totalPessoas||0) + Object.values(PESSOAS).reduce((a,b)=>a+b.length,0);
@@ -2075,6 +2160,46 @@ async function submitLista() {
   if (!selecionadas.length) { showAlert('submitAlert','blue','Selecione pelo menos uma pessoa.'); return; }
   if (!dataViagem) { showAlert('submitAlert','blue','Selecione a data.'); return; }
 
+  // Verificar limite de 80 pessoas por lista
+  const LIMITE_LISTA = 80;
+  const dataViagem2 = document.getElementById('fData').value;
+  const isEntCheck = rotaVal==='entrada'||rotaVal==='entrada2'||rotaVal==='ambos';
+  const isSaiCheck = rotaVal==='saida'||rotaVal==='saida2'||rotaVal==='ambos';
+
+  if (isEntCheck) {
+    const { data: listasEnt } = await sb.from('listas').select('id').eq('data_viagem', dataViagem2).eq('tipo','entrada');
+    if (listasEnt?.length) {
+      const idsEnt = listasEnt.map(l=>l.id);
+      const { count: totalEnt } = await sb.from('passageiros').select('*',{count:'exact',head:true}).in('lista_id', idsEnt);
+      const restantesEnt = LIMITE_LISTA - (totalEnt||0);
+      if (restantesEnt <= 0) {
+        showAlert('submitAlert','red','⚠️ Limite de 80 passageiros na lista de ENTRADA atingido para hoje. Entre em contato com o Site Services.');
+        return;
+      }
+      if (selecionadas.length > restantesEnt) {
+        showAlert('submitAlert','amber',`⚠️ A lista de ENTRADA só tem ${restantesEnt} vaga(s) restante(s) de 80. Reduza a seleção ou entre em contato com o Site Services.`);
+        return;
+      }
+    }
+  }
+
+  if (isSaiCheck) {
+    const { data: listasSai } = await sb.from('listas').select('id').eq('data_viagem', dataViagem2).eq('tipo','saida');
+    if (listasSai?.length) {
+      const idsSai = listasSai.map(l=>l.id);
+      const { count: totalSai } = await sb.from('passageiros').select('*',{count:'exact',head:true}).in('lista_id', idsSai);
+      const restantesSai = LIMITE_LISTA - (totalSai||0);
+      if (restantesSai <= 0) {
+        showAlert('submitAlert','red','⚠️ Limite de 80 passageiros na lista de SAÍDA atingido para hoje. Entre em contato com o Site Services.');
+        return;
+      }
+      if (selecionadas.length > restantesSai) {
+        showAlert('submitAlert','amber',`⚠️ A lista de SAÍDA só tem ${restantesSai} vaga(s) restante(s) de 80. Reduza a seleção ou entre em contato com o Site Services.`);
+        return;
+      }
+    }
+  }
+
   const btn = document.getElementById('btnEnviar');
   btn.disabled = true; btn.textContent = 'Enviando...';
 
@@ -2116,9 +2241,34 @@ async function submitLista() {
       if (errPax) throw errPax;
     }
 
-    showAlert('submitAlert','green',`${selecionadas.length} pessoa(s) enviada(s) com sucesso!`);
+    // Mostrar modal de confirmação
+    const protocolo = 'TZ-' + new Date().getFullYear() + '-' + Math.random().toString(36).substr(2,6).toUpperCase();
+    const dataFormatada = new Date(dataViagem + 'T12:00:00').toLocaleDateString('pt-BR');
+    const tipoLabel = tipos.includes('entrada') && tipos.includes('saida') ? 'Entrada + Saída' : tipos.includes('entrada') ? 'Entrada' : 'Saída';
+    const rotaLabel = tipos.includes('entrada') ? 'Itaituba → Mina TZ' : 'Mina TZ → Itaituba';
+    
+    document.getElementById('confProtocolo').textContent = 'Protocolo: ' + protocolo;
+    document.getElementById('confDetalhes').innerHTML = `
+      <div><span style="color:var(--text3)">Data:</span> ${dataFormatada}</div>
+      <div><span style="color:var(--text3)">Tipo:</span> ${tipoLabel}</div>
+      <div><span style="color:var(--text3)">Rota:</span> ${rotaLabel}</div>
+      <div><span style="color:var(--text3)">Setor:</span> ${setorNome}</div>
+      <div><span style="color:var(--text3)">Enviado por:</span> ${currentProfile.nome}</div>
+      <div><span style="color:var(--text3)">Horário:</span> ${new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</div>
+    `;
+    document.getElementById('confNomesTitle').textContent = selecionadas.length + ' passageiro(s) enviado(s)';
+    document.getElementById('confNomes').innerHTML = selecionadas.map((p,i) => 
+      `<div style="padding:4px 0;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px">
+        <span style="font-family:var(--mono);font-size:11px;color:var(--text3);width:20px">${i+1}</span>
+        <span>${p.nome}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--text3)">${p.local}</span>
+      </div>`
+    ).join('');
+    document.getElementById('modalConfirmacao').classList.remove('hidden');
+    
     clearAll();
     loadDashboard();
+    loadMinhasListas();
   } catch(err) {
     showAlert('submitAlert','red','Erro ao enviar: ' + err.message);
   } finally {
@@ -2238,32 +2388,36 @@ function exportPDF() {
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Lista ${tipo}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,sans-serif;font-size:10px;color:#222;background:#fff}
-/* FORÇAR CORES NA IMPRESSÃO */
+body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff}
 *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-.header{background:#0F5C6B!important;display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
-.header-title{color:#ffffff!important;font-size:16px;font-weight:bold;text-align:center;flex:1}
-.subheader{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:7px;font-size:11px;font-weight:bold}
-.meta{font-size:9px;color:#555;padding:5px 14px;text-align:right;border-bottom:1px solid #ddd}
-.av{background:#EBF5EC!important;border:1px solid #A8D5AC!important;padding:9px 12px;margin:8px 12px;font-size:8.5px;line-height:1.7;border-radius:3px}
-.av p{margin-bottom:4px}
-.tbl-wrap{padding:0 12px 12px}
-table{width:100%;border-collapse:collapse;margin-top:8px}
+.header{background:#0F5C6B!important;display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.header-title{color:#ffffff!important;font-size:18px;font-weight:bold;text-align:center;flex:1;letter-spacing:.05em}
+.subheader{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:8px;font-size:12px;font-weight:bold;letter-spacing:.03em}
+.meta{font-size:10px;color:#555;padding:6px 16px;text-align:right;border-bottom:1px solid #ddd}
+.av{background:#EBF5EC!important;border:1px solid #A8D5AC!important;padding:10px 14px;margin:10px 14px;font-size:9.5px;line-height:1.75;border-radius:3px}
+.av p{margin-bottom:5px}
+.tbl-wrap{padding:0 14px 14px}
+table{width:100%;border-collapse:collapse;margin-top:10px;table-layout:fixed}
 thead tr{background:#0F5C6B!important}
-th{background:#0F5C6B!important;color:#ffffff!important;padding:7px 8px;text-align:left;font-size:9px;font-weight:bold;border:1px solid #0A4A57}
-th.nc{width:32px;text-align:center}
-th.ck{width:20px}
-td{padding:7px 8px;border-bottom:1px solid #e0e0e0;font-size:10px;color:#222}
-td.nc{text-align:center;font-weight:bold;color:#444;font-size:9px;background:#f0f0f0!important}
-td.ck{text-align:center}
+th{background:#0F5C6B!important;color:#ffffff!important;padding:9px 8px;text-align:left;font-size:11px;font-weight:bold;border:1px solid #0A4A57}
+th.nc{width:36px;text-align:center}
+/* Larguras das colunas */
+th:nth-child(1){width:36px}
+th:nth-child(2){width:28%}
+th:nth-child(3){width:16%}
+th:nth-child(4){width:14%}
+th:nth-child(5){width:13%}
+th:nth-child(6){width:13%}
+th:nth-child(7){width:16%}
+td{padding:8px 8px;border-bottom:1px solid #e0e0e0;font-size:11px;color:#222;overflow:hidden;text-overflow:ellipsis}
+td.nc{text-align:center;font-weight:bold;color:#444;font-size:10px;background:#f0f0f0!important}
 tr:nth-child(even) td{background:#f2f2f2!important}
 tr:nth-child(odd) td{background:#ffffff!important}
-.footer{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:8px;font-size:11px;font-weight:bold;margin-top:6px}
+.footer{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:9px;font-size:12px;font-weight:bold;margin-top:6px}
 @media print{
   body{margin:0;padding:0}
   @page{margin:8mm;size:A4 portrait}
-  .header,.subheader,.footer,.av,thead tr,td.nc{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
-  tr:nth-child(even) td{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .header,.subheader,.footer,.av,thead tr,td.nc,tr:nth-child(even) td{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 </style>
 </head><body>
@@ -2502,6 +2656,77 @@ async function confirmarResetSenha() {
   await sb.from('profiles').update({primeiro_acesso:true}).eq('id',id);
   showAlert('alertReset','green','Senha resetada. Usuário precisará criar nova senha no próximo login.');
   setTimeout(fecharModalReset, 2500);
+}
+
+// ============================================================
+// CONFIRMAÇÃO E RETIFICAÇÃO DE LISTAS
+// ============================================================
+function fecharConfirmacao() {
+  document.getElementById('modalConfirmacao').classList.add('hidden');
+}
+
+async function loadMinhasListas() {
+  const card = document.getElementById('minhasListasCard');
+  const content = document.getElementById('minhasListasContent');
+  if (!card || !content) return;
+  
+  card.style.display = 'block';
+  const hoje = new Date().toISOString().split('T')[0];
+  
+  const { data: listas } = await sb.from('listas')
+    .select('*, passageiros(*)')
+    .eq('data_viagem', hoje)
+    .eq('criado_por', currentProfile.id)
+    .order('created_at', {ascending: false});
+
+  if (!listas?.length) {
+    content.innerHTML = '<div style="color:var(--text3);text-align:center;padding:16px;font-size:13px">Nenhuma lista enviada hoje.</div>';
+    return;
+  }
+
+  content.innerHTML = listas.map(lista => `
+    <div style="border:1px solid var(--border);border-radius:var(--r);margin-bottom:10px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;background:var(--bg3)">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="tag ${lista.tipo==='entrada'?'green':'red'}">${lista.tipo==='entrada'?'Entrada':'Saída'}</span>
+          <span style="font-size:13px;font-weight:500">${lista.setor_nome}</span>
+          <span style="font-size:11px;color:var(--text3)">${lista.passageiros?.length||0} pessoa(s)</span>
+        </div>
+        <span style="font-size:11px;color:var(--text3)">${new Date(lista.created_at).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})}</span>
+      </div>
+      <div style="padding:8px 14px">
+        ${(lista.passageiros||[]).map(p => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px">${p.nome}</span>
+            <div style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:11px;color:var(--text3)">${p.local_embarque}</span>
+              <button class="btn sm red" onclick="removerPassageiro('${p.id}','${lista.id}')">Remover</button>
+            </div>
+          </div>`).join('')}
+        <div style="padding-top:8px">
+          <button class="btn sm red" onclick="cancelarLista('${lista.id}')">
+            <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+            Cancelar lista inteira
+          </button>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function removerPassageiro(paxId, listaId) {
+  if (!confirm('Remover este passageiro da lista?')) return;
+  const { error } = await sb.from('passageiros').delete().eq('id', paxId);
+  if (error) { alert('Erro ao remover: ' + error.message); return; }
+  loadMinhasListas();
+  loadDashboard();
+}
+
+async function cancelarLista(listaId) {
+  if (!confirm('Cancelar toda esta lista? Todos os passageiros serão removidos.')) return;
+  await sb.from('passageiros').delete().eq('lista_id', listaId);
+  await sb.from('listas').delete().eq('id', listaId);
+  loadMinhasListas();
+  loadDashboard();
 }
 
 // ============================================================
