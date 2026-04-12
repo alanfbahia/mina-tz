@@ -613,7 +613,7 @@ table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
                 <option value="master">Master</option>
               </select>
             </div>
-            <div class="fg hidden" id="grpSetorUsuario"><label>Setor(es)</label><select class="fs" id="nuSetor" multiple style="height:100px"></select></div>
+            <div class="fg" id="grpSetorUsuario"><label>Setor(es) com acesso</label><select class="fs" id="nuSetor" multiple style="height:120px;border-color:var(--amber-border)"><option disabled>Selecione um ou mais setores...</option></select><div style="font-size:11px;color:var(--text3);margin-top:4px">Segure Ctrl para selecionar mais de um setor</div></div>
           </div>
           <div class="alert blue mb12" style="font-size:12px">
             Senha inicial: <strong id="senhaPreview">—</strong> (usuário obrigado a trocar no 1º acesso)
@@ -2417,6 +2417,9 @@ function fecharModalNovoUsuario() { document.getElementById('modalNovoUsuario').
 function toggleSetorSelect() {
   const role = document.getElementById('nuRole').value;
   document.getElementById('grpSetorUsuario').classList.toggle('hidden', role==='master');
+  if (role==='master') {
+    Array.from(document.getElementById('nuSetor').options).forEach(o => o.selected = false);
+  }
 }
 
 async function criarNovoUsuario() {
