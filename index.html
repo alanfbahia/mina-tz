@@ -551,8 +551,12 @@ table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
             <div class="section-title">Lista consolidada</div>
             <div class="section-sub" style="margin:0">Todas as listas enviadas — atualiza em tempo real</div>
           </div>
-          <div class="flex">
+          <div class="flex" style="flex-wrap:wrap;gap:8px">
             <input class="fi" type="date" id="filtroData" style="width:150px" onchange="loadConsolidado()">
+            <button class="btn blue" id="btnAddConsolidada" onclick="toggleAddConsolidada()" style="display:none">
+              <svg viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Adicionar
+            </button>
             <button class="btn amber" onclick="embaralhar()">
               <svg viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
               Embaralhar
@@ -574,6 +578,27 @@ table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
               <tbody id="tbCons"><tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">Selecione uma data</td></tr></tbody>
             </table>
           </div>
+        </div>
+
+        <!-- PAINEL ADICIONAR PESSOA NA CONSOLIDADA -->
+        <div id="addConsolidadaPanel" class="card hidden" style="margin-top:12px">
+          <div class="card-title">Adicionar pessoa à lista <span id="addConsTipoLabel" class="tag green" style="margin-left:6px">Entrada</span></div>
+          <div class="form-grid">
+            <div class="fg full">
+              <label>Buscar pessoa cadastrada</label>
+              <input class="fi" id="addConsSearch" placeholder="Digite o nome para buscar..." oninput="buscarPessoaConsolidada(this.value)">
+              <div id="addConsResultados" style="margin-top:6px;max-height:200px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r);display:none"></div>
+            </div>
+            <div class="fg"><label>Nome</label><input class="fi" id="addConsNome" placeholder="Nome completo"></div>
+            <div class="fg"><label>Empresa</label><input class="fi" id="addConsEmpresa" placeholder="Empresa" value="Gmining"></div>
+            <div class="fg"><label>Setor</label><select class="fs" id="addConsSetor"></select></div>
+            <div class="fg"><label>Local de embarque</label><select class="fs" id="addConsLocal"></select></div>
+          </div>
+          <div class="flex">
+            <button class="btn green" onclick="confirmarAddConsolidada()">Adicionar à lista</button>
+            <button class="btn" onclick="toggleAddConsolidada()">Cancelar</button>
+          </div>
+          <div id="addConsAlert" style="margin-top:8px"></div>
         </div>
       </div>
 
@@ -1942,6 +1967,11 @@ function setupUI() {
   ['consolidado','locais','usuarios'].forEach(id => {
     document.getElementById('nav-'+id).classList.toggle('hidden', !master);
   });
+  // Botão adicionar na consolidada só para master
+  setTimeout(() => {
+    const btnAdd = document.getElementById('btnAddConsolidada');
+    if (btnAdd) btnAdd.style.display = master ? '' : 'none';
+  }, 100);
   document.getElementById('btnAddGlobal')?.classList.toggle('hidden', !master);
   document.getElementById('btnNovoUsuario')?.classList.toggle('hidden', !master);
 
@@ -1995,25 +2025,20 @@ function goPage(id, el) {
 async function loadDashboard() {
   const hoje = new Date().toISOString().split('T')[0];
 
+  // Uma única query com contagem embutida
   const { data: listas } = await sb.from('listas')
-    .select('*, passageiros(count)')
+    .select('id, tipo, transporte, setor_nome, criado_por_nome, created_at, passageiros(count)')
     .eq('data_viagem', hoje)
     .order('created_at', {ascending: false});
 
-  const entradas = listas?.filter(l => l.tipo==='entrada') || [];
-  const saidas = listas?.filter(l => l.tipo==='saida') || [];
   const setoresEnviaram = [...new Set(listas?.map(l=>l.setor_nome)||[])];
 
-  // Contar passageiros
-  const { data: paxEnt } = await sb.from('passageiros')
-    .select('id', {count:'exact'})
-    .in('lista_id', entradas.map(l=>l.id));
-  const { data: paxSai } = await sb.from('passageiros')
-    .select('id', {count:'exact'})
-    .in('lista_id', saidas.map(l=>l.id));
-
-  const totalEnt = paxEnt?.length || 0;
-  const totalSai = paxSai?.length || 0;
+  const totalEnt = (listas||[])
+    .filter(l=>l.tipo==='entrada')
+    .reduce((sum,l)=>sum+(l.passageiros?.[0]?.count||0),0);
+  const totalSai = (listas||[])
+    .filter(l=>l.tipo==='saida')
+    .reduce((sum,l)=>sum+(l.passageiros?.[0]?.count||0),0);
   const LIMITE = 80;
 
   document.getElementById('mEnt').textContent = totalEnt || '—';
@@ -2284,39 +2309,58 @@ async function loadConsolidado() {
   const data = document.getElementById('filtroData').value;
   if (!data) return;
 
-  const { data: listas } = await sb.from('listas')
-    .select('id, tipo, transporte, setor_nome')
-    .eq('data_viagem', data);
+  // Mostrar loading imediato
+  document.getElementById('tbCons').innerHTML = '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:20px"><div class="spinner"></div> Carregando...</td></tr>';
 
-  const entIds = listas?.filter(l=>l.tipo==='entrada').map(l=>l.id)||[];
-  const saiIds = listas?.filter(l=>l.tipo==='saida').map(l=>l.id)||[];
+  // Query otimizada: busca tudo em paralelo de uma vez
+  const { data: rows } = await sb
+    .from('passageiros')
+    .select('id, nome, empresa, setor_nome, local_embarque, listas!inner(tipo, transporte, data_viagem)')
+    .eq('listas.data_viagem', data)
+    .order('nome');
 
-  const loadPax = async (ids) => {
-    if (!ids.length) return [];
-    const { data } = await sb.from('passageiros')
-      .select('*, listas(transporte, setor_nome)')
-      .in('lista_id', ids)
-      .order('ordem');
-    return data||[];
-  };
+  if (!rows) { renderConsolidado(); return; }
 
-  const [entPax, saiPax] = await Promise.all([loadPax(entIds), loadPax(saiIds)]);
-  listaConsolidada.entrada = entPax.map(p => ({
-    nome: p.nome, empresa: p.empresa, setor: p.listas?.setor_nome||p.setor_nome,
-    local: p.local_embarque, transporte: p.listas?.transporte==='charter'?'Charter':'Ônibus'
-  }));
-  listaConsolidada.saida = saiPax.map(p => ({
-    nome: p.nome, empresa: p.empresa, setor: p.listas?.setor_nome||p.setor_nome,
-    local: p.local_embarque, transporte: p.listas?.transporte==='charter'?'Charter':'Ônibus'
-  }));
+  listaConsolidada.entrada = rows
+    .filter(p => p.listas?.tipo==='entrada')
+    .map(p => ({
+      id: p.id,
+      nome: p.nome, empresa: p.empresa, setor: p.setor_nome,
+      local: p.local_embarque,
+      transporte: p.listas?.transporte==='charter'?'Charter':'Ônibus'
+    }));
+  listaConsolidada.saida = rows
+    .filter(p => p.listas?.tipo==='saida')
+    .map(p => ({
+      id: p.id,
+      nome: p.nome, empresa: p.empresa, setor: p.setor_nome,
+      local: p.local_embarque,
+      transporte: p.listas?.transporte==='charter'?'Charter':'Ônibus'
+    }));
 
   renderConsolidado();
 }
 
 function renderConsolidado() {
   const lista = listaConsolidada[tabAtiva];
+  const master = isMasterOrOwner();
   document.getElementById('cntEnt').textContent = listaConsolidada.entrada.length;
   document.getElementById('cntSai').textContent = listaConsolidada.saida.length;
+
+  // Coluna extra de ações para master
+  const extraTh = master ? '<th style="width:70px"></th>' : '';
+  const thead = document.getElementById('tbCons').closest('table')?.querySelector('thead tr');
+  if (thead) {
+    if (master && !thead.querySelector('.th-acoes')) {
+      const th = document.createElement('th');
+      th.className = 'th-acoes';
+      th.style.width = '70px';
+      thead.appendChild(th);
+    } else if (!master) {
+      thead.querySelector('.th-acoes')?.remove();
+    }
+  }
+
   document.getElementById('tbCons').innerHTML = lista.length
     ? lista.map((p,i) => `<tr>
         <td class="num-cell">${i+1}</td>
@@ -2325,8 +2369,9 @@ function renderConsolidado() {
         <td>${p.setor}</td>
         <td class="mono" style="font-size:12px">${p.local}</td>
         <td><span class="tag ${p.transporte==='Charter'?'amber':'gray'}">${p.transporte}</span></td>
+        ${master ? `<td><button class="btn sm red" style="padding:3px 8px;font-size:11px" onclick="deletarDaConsolidada('${p.id||''}','${(p.nome||'').replace(/'/g,"\\'")}')">Remover</button></td>` : ''}
       </tr>`).join('')
-    : '<tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">Nenhum passageiro</td></tr>';
+    : `<tr><td colspan="${master?7:6}" style="color:var(--text3);text-align:center;padding:24px">Nenhum passageiro</td></tr>`;
 }
 
 function switchTab(tab, el) {
@@ -2340,6 +2385,118 @@ function embaralhar() {
   const l = listaConsolidada[tabAtiva];
   for(let i=l.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[l[i],l[j]]=[l[j],l[i]];}
   renderConsolidado();
+}
+
+async function deletarDaConsolidada(paxId, nome) {
+  if (!confirm('Remover ' + nome + ' da lista consolidada?')) return;
+  if (paxId && paxId !== 'undefined') {
+    const { error } = await sb.from('passageiros').delete().eq('id', paxId);
+    if (error) { alert('Erro: ' + error.message); return; }
+  }
+  // Remover localmente também para resposta imediata
+  listaConsolidada[tabAtiva] = listaConsolidada[tabAtiva].filter(p => p.nome !== nome);
+  renderConsolidado();
+  loadDashboard();
+}
+
+function toggleAddConsolidada() {
+  const panel = document.getElementById('addConsolidadaPanel');
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) {
+    // Popular selects
+    const selSetor = document.getElementById('addConsSetor');
+    selSetor.innerHTML = SETORES.map(s=>`<option value="${s.id}">${s.nome}</option>`).join('');
+    populateLocalSelect('addConsLocal');
+    document.getElementById('addConsTipoLabel').textContent = tabAtiva==='entrada'?'Entrada':'Saída';
+    document.getElementById('addConsTipoLabel').className = 'tag ' + (tabAtiva==='entrada'?'green':'red');
+    document.getElementById('addConsSearch').focus();
+  }
+}
+
+function buscarPessoaConsolidada(q) {
+  const res = document.getElementById('addConsResultados');
+  if (!q || q.length < 2) { res.style.display='none'; return; }
+  const lq = q.toLowerCase();
+  const encontradas = [];
+  SETORES.forEach(s => {
+    (PESSOAS[s.id]||[]).forEach(p => {
+      if (p.nome.toLowerCase().includes(lq)) {
+        encontradas.push({...p, setor: s.id, setorNome: s.nome});
+      }
+    });
+  });
+  if (!encontradas.length) { res.style.display='none'; return; }
+  res.style.display = 'block';
+  res.innerHTML = encontradas.slice(0,8).map(p => `
+    <div style="padding:8px 12px;cursor:pointer;border-bottom:1px solid var(--border);font-size:13px"
+         onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''"
+         onclick="selecionarPessoaConsolidada('${p.nome.replace(/'/g,"\'")}','${p.empresa.replace(/'/g,"\'")}','${p.setor}','${(p.local||'Itaituba').replace(/'/g,"\'")}')">
+      <span style="font-weight:500">${p.nome}</span>
+      <span style="color:var(--text3);font-size:11px;margin-left:8px">${p.setorNome} · ${p.empresa}</span>
+    </div>`).join('');
+}
+
+function selecionarPessoaConsolidada(nome, empresa, setorId, local) {
+  document.getElementById('addConsNome').value = nome;
+  document.getElementById('addConsEmpresa').value = empresa;
+  document.getElementById('addConsSetor').value = setorId;
+  document.getElementById('addConsLocal').value = local;
+  document.getElementById('addConsSearch').value = nome;
+  document.getElementById('addConsResultados').style.display = 'none';
+}
+
+async function confirmarAddConsolidada() {
+  const nome = document.getElementById('addConsNome').value.trim();
+  const empresa = document.getElementById('addConsEmpresa').value.trim() || 'Gmining';
+  const setorId = document.getElementById('addConsSetor').value;
+  const local = document.getElementById('addConsLocal').value;
+  const dataViagem = document.getElementById('filtroData').value;
+
+  if (!nome) { showAlert('addConsAlert','blue','Digite o nome.'); return; }
+  if (!dataViagem) { showAlert('addConsAlert','blue','Selecione a data.'); return; }
+
+  const setorNome = SETORES.find(s=>s.id===setorId)?.nome || setorId;
+
+  // Buscar ou criar lista do dia para master
+  let { data: lista } = await sb.from('listas')
+    .select('id')
+    .eq('data_viagem', dataViagem)
+    .eq('tipo', tabAtiva)
+    .eq('criado_por', currentProfile.id)
+    .limit(1)
+    .single();
+
+  if (!lista) {
+    const { data: novaLista, error } = await sb.from('listas').insert({
+      data_viagem: dataViagem,
+      tipo: tabAtiva,
+      transporte: 'onibus',
+      rota: tabAtiva==='entrada'?'Itaituba → Mina TZ':'Mina TZ → Itaituba',
+      setor_id: setorId,
+      setor_nome: setorNome,
+      criado_por: currentProfile.id,
+      criado_por_nome: currentProfile.nome,
+    }).select().single();
+    if (error) { showAlert('addConsAlert','red','Erro: '+error.message); return; }
+    lista = novaLista;
+  }
+
+  const { error: errPax } = await sb.from('passageiros').insert({
+    lista_id: lista.id,
+    nome, empresa,
+    setor_nome: setorNome,
+    local_embarque: local,
+    ordem: listaConsolidada[tabAtiva].length,
+  });
+
+  if (errPax) { showAlert('addConsAlert','red','Erro: '+errPax.message); return; }
+
+  showAlert('addConsAlert','green', nome + ' adicionado com sucesso!');
+  document.getElementById('addConsNome').value = '';
+  document.getElementById('addConsSearch').value = '';
+  document.getElementById('addConsResultados').style.display = 'none';
+  loadConsolidado();
+  loadDashboard();
 }
 
 function exportPDF() {
