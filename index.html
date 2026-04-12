@@ -2233,29 +2233,45 @@ function exportPDF() {
     <p><b>Kit de enxoval:</b> Declaro que estou recebendo meu kit de cama e deverei devolvê-lo na minha saída para folga.</p>
     <p><b>Alojamento:</b> Declaro que estou ciente de que estou alojado no quarto que assinei, sem alterações.</p>
   </div>`:'';
-  const rows = lista.map((p,i)=>`<tr><td class="nc">${i+1}</td><td class="ck"></td><td>${p.nome}</td><td>${p.empresa}</td><td>${p.setor}</td><td>${p.local}</td>${extraTd}</tr>`).join('');
+  const rows = lista.map((p,i)=>`<tr><td class="nc">${i+1}</td><td>${p.nome}</td><td>${p.empresa}</td><td>${p.setor}</td><td>${p.local}</td>${extraTd}</tr>`).join('');
   const w = window.open('','_blank');
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Lista ${tipo}</title>
-<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:10px;color:#222}
-.header{background:#0F5C6B;display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
-.header-title{color:#fff;font-size:16px;font-weight:bold;text-align:center;flex:1}
-.subheader{background:#C9952A;color:#fff;text-align:center;padding:7px;font-size:11px;font-weight:bold}
-.meta{font-size:9px;color:#666;padding:4px 14px;text-align:right;border-bottom:1px solid #ddd}
-.av{background:#f0f8f0;border:1px solid #b8d8bc;padding:9px 12px;margin:8px 12px;font-size:8.2px;line-height:1.65;border-radius:3px}
-.av p{margin-bottom:3px}.tbl-wrap{padding:0 12px 12px}
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:Arial,sans-serif;font-size:10px;color:#222;background:#fff}
+/* FORÇAR CORES NA IMPRESSÃO */
+*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+.header{background:#0F5C6B!important;display:flex;align-items:center;justify-content:space-between;padding:10px 16px}
+.header-title{color:#ffffff!important;font-size:16px;font-weight:bold;text-align:center;flex:1}
+.subheader{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:7px;font-size:11px;font-weight:bold}
+.meta{font-size:9px;color:#555;padding:5px 14px;text-align:right;border-bottom:1px solid #ddd}
+.av{background:#EBF5EC!important;border:1px solid #A8D5AC!important;padding:9px 12px;margin:8px 12px;font-size:8.5px;line-height:1.7;border-radius:3px}
+.av p{margin-bottom:4px}
+.tbl-wrap{padding:0 12px 12px}
 table{width:100%;border-collapse:collapse;margin-top:8px}
-th{background:#0F5C6B;color:#fff;padding:7px 8px;text-align:left;font-size:9px;font-weight:bold}
-th.nc{width:32px;text-align:center}td{padding:6px 8px;border-bottom:1px solid #e0e0e0;font-size:10px}
-td.nc{text-align:center;font-weight:bold;color:#555;font-size:9px}
-tr:nth-child(even)td{background:#f4f4f4}tr:nth-child(odd)td{background:#fff}
-.footer{background:#C9952A;color:#fff;text-align:center;padding:7px;font-size:11px;font-weight:bold;margin-top:4px}
-@media print{body{margin:0}@page{margin:8mm;size:A4}th,tr:nth-child(even)td,.header,.subheader,.footer,.av{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style>
+thead tr{background:#0F5C6B!important}
+th{background:#0F5C6B!important;color:#ffffff!important;padding:7px 8px;text-align:left;font-size:9px;font-weight:bold;border:1px solid #0A4A57}
+th.nc{width:32px;text-align:center}
+th.ck{width:20px}
+td{padding:7px 8px;border-bottom:1px solid #e0e0e0;font-size:10px;color:#222}
+td.nc{text-align:center;font-weight:bold;color:#444;font-size:9px;background:#f0f0f0!important}
+td.ck{text-align:center}
+tr:nth-child(even) td{background:#f2f2f2!important}
+tr:nth-child(odd) td{background:#ffffff!important}
+.footer{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:8px;font-size:11px;font-weight:bold;margin-top:6px}
+@media print{
+  body{margin:0;padding:0}
+  @page{margin:8mm;size:A4 portrait}
+  .header,.subheader,.footer,.av,thead tr,td.nc{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  tr:nth-child(even) td{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+}
+</style>
 </head><body>
 <div class="header"><div class="header-logo">${logoSVG}</div><div class="header-title">LISTA DE PASSAGEIROS</div><div style="width:80px"></div></div>
 <div class="subheader">${rota} | ${tipo} EM ${dataFmt}</div>
 <div class="meta">${dataFmt} - ${horaFmt} - ${usuario}</div>
 ${avisos}
-<div class="tbl-wrap"><table><thead><tr><th class="nc">N°</th><th class="ck">✓</th><th>Nome</th><th>Empresa</th><th>Setor</th><th>${colLabel}</th>${extraTh}</tr></thead><tbody>${rows}</tbody></table></div>
+<div class="tbl-wrap"><table><thead><tr><th class="nc">N°</th><th style="width:35%">Nome</th><th>Empresa</th><th>Setor</th><th>${colLabel}</th>${extraTh}</tr></thead><tbody>${rows}</tbody></table></div>
 <div class="footer">Boa viagem!</div></body></html>`);
   w.document.close(); setTimeout(()=>w.print(),800);
 }
