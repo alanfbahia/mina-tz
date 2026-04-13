@@ -427,15 +427,19 @@ tr.drag-over{border-top:2px solid var(--green)!important}
 
       <!-- DASHBOARD -->
       <div class="page active" id="page-dashboard">
-        <div class="flex-between mb20">
+        <div class="flex-between mb16">
           <div>
             <div class="section-title" id="dashGreeting">Painel</div>
             <div class="section-sub" style="margin:0" id="dashSub">Visão geral</div>
           </div>
+          <div class="flex" style="gap:8px;align-items:center">
+            <span style="font-size:12px;color:var(--text2)">Data:</span>
+            <input class="fi" type="date" id="dashData" style="width:150px" onchange="loadDashboard()">
+          </div>
         </div>
-        <div class="grid4 mb16">
+        <div class="grid4 mb12">
           <div class="metric">
-            <div class="metric-label">Entradas hoje</div>
+            <div class="metric-label">Entradas</div>
             <div style="display:flex;align-items:baseline;gap:6px">
               <div class="metric-value green" id="mEnt">—</div>
               <div style="font-size:13px;color:var(--text3);font-family:var(--mono)">/80</div>
@@ -446,7 +450,7 @@ tr.drag-over{border-top:2px solid var(--green)!important}
             <div class="metric-sub" id="mEntSub">limite: 80 passageiros</div>
           </div>
           <div class="metric">
-            <div class="metric-label">Saídas hoje</div>
+            <div class="metric-label">Saídas</div>
             <div style="display:flex;align-items:baseline;gap:6px">
               <div class="metric-value blue" id="mSai">—</div>
               <div style="font-size:13px;color:var(--text3);font-family:var(--mono)">/80</div>
@@ -456,8 +460,25 @@ tr.drag-over{border-top:2px solid var(--green)!important}
             </div>
             <div class="metric-sub" id="mSaiSub">limite: 80 passageiros</div>
           </div>
-          <div class="metric"><div class="metric-label">Setores enviaram</div><div class="metric-value amber" id="mEnv">0</div><div class="metric-sub">hoje</div></div>
+          <div class="metric"><div class="metric-label">Setores enviaram</div><div class="metric-value amber" id="mEnv">0</div><div class="metric-sub" id="mEnvSub">no dia selecionado</div></div>
           <div class="metric"><div class="metric-label">Total cadastrados</div><div class="metric-value purple" id="mTotal">—</div><div class="metric-sub">colaboradores</div></div>
+        </div>
+        <!-- Gmining vs Contratadas -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px" id="gminingStat">
+          <div class="metric">
+            <div class="metric-label">Gmining — Entradas</div>
+            <div style="display:flex;gap:16px;align-items:baseline">
+              <div><div style="font-size:20px;font-weight:700;color:var(--green);font-family:var(--mono)" id="mEntGmining">—</div><div style="font-size:10px;color:var(--text3)">Gmining</div></div>
+              <div><div style="font-size:20px;font-weight:700;color:var(--amber);font-family:var(--mono)" id="mEntContratada">—</div><div style="font-size:10px;color:var(--text3)">Contratadas</div></div>
+            </div>
+          </div>
+          <div class="metric">
+            <div class="metric-label">Gmining — Saídas</div>
+            <div style="display:flex;gap:16px;align-items:baseline">
+              <div><div style="font-size:20px;font-weight:700;color:var(--blue);font-family:var(--mono)" id="mSaiGmining">—</div><div style="font-size:10px;color:var(--text3)">Gmining</div></div>
+              <div><div style="font-size:20px;font-weight:700;color:var(--amber);font-family:var(--mono)" id="mSaiContratada">—</div><div style="font-size:10px;color:var(--text3)">Contratadas</div></div>
+            </div>
+          </div>
         </div>
         <div class="grid2">
           <div class="card">
@@ -708,6 +729,7 @@ tr.drag-over{border-top:2px solid var(--green)!important}
             <div class="fg"><label>Nível de acesso</label>
               <select class="fs" id="nuRole" onchange="toggleSetorSelect()">
                 <option value="setor">Responsável de Setor</option>
+                <option value="analista">Analista</option>
                 <option value="master">Master</option>
               </select>
             </div>
@@ -1960,6 +1982,33 @@ function isMasterOrOwner() {
 function isOwner() {
   return currentProfile && currentProfile.role === 'proprietario';
 }
+function isAnalista() {
+  return currentProfile && currentProfile.role === 'analista';
+}
+function canManageUsers() {
+  // Master e Proprietário podem gerenciar usuários
+  return isMasterOrOwner();
+}
+function canDeleteUser(targetRole) {
+  // Proprietário pode deletar qualquer um exceto si mesmo
+  // Master pode deletar apenas setor e analista
+  // Analista não pode deletar ninguém
+  if (!currentProfile) return false;
+  if (targetRole === 'proprietario') return false;
+  if (isOwner()) return true;
+  if (currentProfile.role === 'master') return ['setor','analista'].includes(targetRole);
+  return false;
+}
+function canBlockUser(targetRole) {
+  // Proprietário pode bloquear qualquer um exceto si mesmo
+  // Master pode bloquear setor e analista
+  // Analista não pode bloquear ninguém
+  if (!currentProfile) return false;
+  if (targetRole === 'proprietario') return false;
+  if (isOwner()) return true;
+  if (currentProfile.role === 'master') return ['setor','analista'].includes(targetRole);
+  return false;
+}
 
 // ============================================================
 // SETUP DA UI
@@ -1975,9 +2024,15 @@ function setupUI() {
   document.getElementById('topBadge').textContent = owner?'Proprietário':master?'Master':'Setor';
   document.getElementById('topBadge').className = 'badge ' + (owner||master?'master':'setor');
 
-  ['consolidado','locais','usuarios'].forEach(id => {
-    document.getElementById('nav-'+id).classList.toggle('hidden', !master);
-  });
+  const analista = isAnalista();
+  // Consolidado: master, proprietário e analista podem ver
+  document.getElementById('nav-consolidado').classList.toggle('hidden', !master && !analista);
+  // Locais e usuários: só master e proprietário
+  document.getElementById('nav-locais').classList.toggle('hidden', !master);
+  document.getElementById('nav-usuarios').classList.toggle('hidden', !master);
+  // Badge de role
+  document.getElementById('topBadge').textContent = isOwner()?'Proprietário':master?'Master':analista?'Analista':'Setor';
+  document.getElementById('topBadge').className = 'badge ' + (isOwner()?'master':master?'master':analista?'blue':'setor');
   // Botão adicionar na consolidada só para master
   setTimeout(() => {
     const btnAdd = document.getElementById('btnAddConsolidada');
@@ -2035,11 +2090,14 @@ function goPage(id, el) {
 // ============================================================
 async function loadDashboard() {
   const hoje = new Date().toISOString().split('T')[0];
+  const dashDataEl = document.getElementById('dashData');
+  if (dashDataEl && !dashDataEl.value) dashDataEl.value = hoje;
+  const dataSel = dashDataEl?.value || hoje;
 
   // Uma única query com contagem embutida
   const { data: listas } = await sb.from('listas')
     .select('id, tipo, transporte, setor_nome, criado_por_nome, created_at, passageiros(count)')
-    .eq('data_viagem', hoje)
+    .eq('data_viagem', dataSel)
     .order('created_at', {ascending: false});
 
   const setoresEnviaram = [...new Set(listas?.map(l=>l.setor_nome)||[])];
@@ -2076,6 +2134,23 @@ async function loadDashboard() {
 
   const { count: totalPessoas } = await sb.from('pessoas').select('*', {count:'exact',head:true});
   document.getElementById('mTotal').textContent = (totalPessoas||0) + Object.values(PESSOAS).reduce((a,b)=>a+b.length,0);
+
+  // Gmining vs Contratadas — buscar passageiros do dia
+  const idsEnt = (listas||[]).filter(l=>l.tipo==='entrada').map(l=>l.id);
+  const idsSai = (listas||[]).filter(l=>l.tipo==='saida').map(l=>l.id);
+  
+  const contarGmining = async (ids) => {
+    if (!ids.length) return {gmining:0, contratada:0};
+    const { data } = await sb.from('passageiros').select('empresa').in('lista_id', ids);
+    const gmining = (data||[]).filter(p => p.empresa?.toLowerCase() === 'gmining').length;
+    return { gmining, contratada: (data||[]).length - gmining };
+  };
+
+  const [gEnt, gSai] = await Promise.all([contarGmining(idsEnt), contarGmining(idsSai)]);
+  document.getElementById('mEntGmining').textContent = gEnt.gmining || '—';
+  document.getElementById('mEntContratada').textContent = gEnt.contratada || '—';
+  document.getElementById('mSaiGmining').textContent = gSai.gmining || '—';
+  document.getElementById('mSaiContratada').textContent = gSai.contratada || '—';
 
   // Tabela submissões
   document.getElementById('tbSubs').innerHTML = listas?.length
@@ -2661,7 +2736,7 @@ function exportPDF() {
   const colLabel = tabAtiva==='entrada'?'Embarque':'Desembarque';
   const extraTh = tabAtiva==='entrada'?'<th>Alojamento</th><th>Assinatura</th>':'<th>Alojamento</th>';
   const extraTd = tabAtiva==='entrada'?'<td></td><td></td>':'<td></td>';
-  const logoSVG = `<svg id="logo_pdf" style="height:46px;width:auto;display:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612">
+  const logoSVG = `<svg id="logo_pdf" style="height:70px;width:auto;display:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612">
   <defs>
     <style>
       .cls-1 {
@@ -2696,9 +2771,9 @@ function exportPDF() {
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Lista ${tipo}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff}
+body{font-family:Arial,sans-serif;font-size:12px;color:#222;background:#fff}
 *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
-.header{background:#0F5C6B!important;display:flex;align-items:center;justify-content:space-between;padding:12px 16px}
+.header{background:#0F5C6B!important;display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
 .header-title{color:#ffffff!important;font-size:18px;font-weight:bold;text-align:center;flex:1;letter-spacing:.05em}
 .subheader{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:8px;font-size:12px;font-weight:bold;letter-spacing:.03em}
 .meta{font-size:10px;color:#555;padding:6px 16px;text-align:right;border-bottom:1px solid #ddd}
@@ -2707,7 +2782,7 @@ body{font-family:Arial,sans-serif;font-size:11px;color:#222;background:#fff}
 .tbl-wrap{padding:0 14px 14px}
 table{width:100%;border-collapse:collapse;margin-top:10px;table-layout:fixed}
 thead tr{background:#0F5C6B!important}
-th{background:#0F5C6B!important;color:#ffffff!important;padding:9px 8px;text-align:left;font-size:11px;font-weight:bold;border:1px solid #0A4A57}
+th{background:#0F5C6B!important;color:#ffffff!important;padding:9px 8px;text-align:left;font-size:12px;font-weight:bold;border:1px solid #0A4A57}
 th.nc{width:36px;text-align:center}
 /* Larguras das colunas */
 th:nth-child(1){width:36px}
@@ -2717,8 +2792,8 @@ th:nth-child(4){width:14%}
 th:nth-child(5){width:13%}
 th:nth-child(6){width:13%}
 th:nth-child(7){width:16%}
-td{padding:8px 8px;border-bottom:1px solid #e0e0e0;font-size:11px;color:#222;overflow:hidden;text-overflow:ellipsis}
-td.nc{text-align:center;font-weight:bold;color:#444;font-size:10px;background:#f0f0f0!important}
+td{padding:8px 8px;border-bottom:1px solid #e0e0e0;font-size:12px;color:#222;overflow:hidden;text-overflow:ellipsis}
+td.nc{text-align:center;font-weight:bold;color:#444;font-size:11px;background:#f0f0f0!important}
 tr:nth-child(even) td{background:#f2f2f2!important}
 tr:nth-child(odd) td{background:#ffffff!important}
 .footer{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:9px;font-size:12px;font-weight:bold;margin-top:6px}
@@ -2860,25 +2935,33 @@ async function loadUsuarios() {
   const { data: profiles } = await sb.from('profiles')
     .select('*').order('role').order('nome');
 
+  const roleColors = {proprietario:'amber',master:'blue',analista:'purple',setor:'gray'};
+  const roleLabels = {proprietario:'Proprietário',master:'Master',analista:'Analista',setor:'Setor'};
+
   document.getElementById('tbUsuarios').innerHTML = profiles?.length
-    ? profiles.map(u => `<tr>
-        <td>${u.nome}</td>
-        <td style="color:var(--text2);font-size:12px">${u.email}</td>
-        <td class="mono" style="font-size:11px">${u.usuario}</td>
-        <td><span class="tag ${u.role==='proprietario'?'amber':u.role==='master'?'blue':'gray'}">${u.role}</span></td>
-        <td style="font-size:12px;color:var(--text2)">${u.setores?.join(', ')||'—'}</td>
-        <td><span class="status-dot ${u.ativo?'ativo':'inativo'}"></span>${u.ativo?'Ativo':'Bloqueado'}</td>
-        <td>
-          ${u.role !== 'proprietario' ? `
-            <div class="flex" style="gap:4px">
-              <button class="btn sm" onclick="resetarSenha('${u.id}','${u.nome}','${u.usuario}')">Reset senha</button>
-              <button class="btn sm ${u.ativo?'red':'green'}" onclick="toggleAtivo('${u.id}',${u.ativo})">
-                ${u.ativo?'Bloquear':'Ativar'}
-              </button>
-              ${isOwner() ? `<button class="btn sm red" onclick="deletarUsuario('${u.id}','${u.nome}')">Excluir</button>` : ''}
-            </div>` : '<span class="tag amber">Proprietário</span>'}
-        </td>
-      </tr>`).join('')
+    ? profiles.map(u => {
+        const podeDeletar = canDeleteUser(u.role);
+        const podeBloquear = canBlockUser(u.role);
+        const podeReset = isMasterOrOwner();
+        const ehProprietario = u.role === 'proprietario';
+        return `<tr>
+          <td>${u.nome}</td>
+          <td style="color:var(--text2);font-size:12px">${u.email}</td>
+          <td class="mono" style="font-size:11px">${u.usuario}</td>
+          <td><span class="tag ${roleColors[u.role]||'gray'}">${roleLabels[u.role]||u.role}</span></td>
+          <td style="font-size:12px;color:var(--text2)">${u.role==='setor'?(u.setores?.filter(s=>s!=='*').map(s=>SETORES.find(x=>x.id===s)?.nome||s).join(', ')||'—'):'Todos os setores'}</td>
+          <td><span class="status-dot ${u.ativo?'ativo':'inativo'}"></span>${u.ativo?'Ativo':'Bloqueado'}</td>
+          <td>
+            ${ehProprietario
+              ? '<span class="tag amber">Proprietário</span>'
+              : `<div class="flex" style="gap:4px">
+                  ${podeReset ? `<button class="btn sm" onclick="resetarSenha('${u.id}','${u.nome}','${u.usuario}')">Reset senha</button>` : ''}
+                  ${podeBloquear ? `<button class="btn sm ${u.ativo?'red':'green'}" onclick="toggleAtivo('${u.id}',${u.ativo})">${u.ativo?'Bloquear':'Ativar'}</button>` : ''}
+                  ${podeDeletar ? `<button class="btn sm red" onclick="deletarUsuario('${u.id}','${u.nome}')">Excluir</button>` : ''}
+                </div>`}
+          </td>
+        </tr>`;
+      }).join('')
     : '<tr><td colspan="7" style="color:var(--text3);text-align:center;padding:20px">Nenhum usuário</td></tr>';
 }
 
@@ -2894,8 +2977,9 @@ function abrirModalNovoUsuario() {
 function fecharModalNovoUsuario() { document.getElementById('modalNovoUsuario').classList.add('hidden'); }
 function toggleSetorSelect() {
   const role = document.getElementById('nuRole').value;
-  document.getElementById('grpSetorUsuario').classList.toggle('hidden', role==='master');
-  if (role==='master') {
+  const semSetor = ['master','analista'].includes(role);
+  document.getElementById('grpSetorUsuario').classList.toggle('hidden', semSetor);
+  if (semSetor) {
     Array.from(document.getElementById('nuSetor').options).forEach(o => o.selected = false);
   }
 }
@@ -2906,7 +2990,7 @@ async function criarNovoUsuario() {
   const usuario = document.getElementById('nuUsuario').value.trim();
   const role = document.getElementById('nuRole').value;
   const setorSel = document.getElementById('nuSetor');
-  const setores = role==='master' ? ['*'] : Array.from(setorSel.selectedOptions).map(o=>o.value);
+  const setores = ['master','analista'].includes(role) ? ['*'] : Array.from(setorSel.selectedOptions).map(o=>o.value);
 
   if (!nome||!email||!usuario) { showAlert('nuAlert','blue','Preencha todos os campos.'); return; }
 
