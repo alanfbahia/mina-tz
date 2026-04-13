@@ -378,7 +378,7 @@ tr.drag-over{border-top:2px solid var(--green)!important}
   </g>
 </svg>
       </div>
-      <div class="sb-sub">Passageiros v4.1</div>
+      <div class="sb-sub">Passageiros v4.2</div>
     </div>
     <nav class="sb-nav">
       <div class="nav-group">Principal</div>
@@ -593,10 +593,26 @@ tr.drag-over{border-top:2px solid var(--green)!important}
               <svg viewBox="0 0 24 24"><polyline points="16 3 21 3 21 8"/><line x1="4" y1="20" x2="21" y2="3"/><polyline points="21 16 21 21 16 21"/><line x1="15" y1="15" x2="21" y2="21"/></svg>
               Embaralhar
             </button>
-            <button class="btn green" onclick="exportPDF()">
-              <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-              Exportar PDF
-            </button>
+            <div style="position:relative;display:inline-block" id="exportDropWrap">
+              <button class="btn green" onclick="toggleExportDrop()" id="btnExportPDF">
+                <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                Exportar PDF
+                <svg viewBox="0 0 24 24" style="width:12px;height:12px;stroke:currentColor;fill:none;stroke-width:2.5;margin-left:2px"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div id="exportDrop" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:var(--bg2);border:1px solid var(--border2);border-radius:8px;min-width:180px;z-index:100;overflow:hidden;box-shadow:0 4px 16px rgba(0,0,0,.3)">
+                <div style="padding:6px 0">
+                  <div style="font-size:10px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;padding:6px 14px 4px">Orientação</div>
+                  <div onclick="exportPDF('retrato')" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text)" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+                    <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0"><rect x="5" y="2" width="14" height="20" rx="2"/></svg>
+                    Retrato (A4 vertical)
+                  </div>
+                  <div onclick="exportPDF('paisagem')" style="padding:9px 14px;cursor:pointer;display:flex;align-items:center;gap:10px;font-size:13px;color:var(--text)" onmouseover="this.style.background='var(--bg3)'" onmouseout="this.style.background=''">
+                    <svg viewBox="0 0 24 24" style="width:14px;height:14px;stroke:var(--green);fill:none;stroke-width:2;flex-shrink:0"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+                    Paisagem (A4 horizontal)
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
         <div class="tab-bar">
@@ -2725,7 +2741,21 @@ async function confirmarAddConsolidada() {
   loadDashboard();
 }
 
-function exportPDF() {
+function toggleExportDrop() {
+  const drop = document.getElementById('exportDrop');
+  drop.style.display = drop.style.display === 'none' ? 'block' : 'none';
+  // Fechar ao clicar fora
+  setTimeout(() => {
+    document.addEventListener('click', function closeDrop(e) {
+      if (!document.getElementById('exportDropWrap')?.contains(e.target)) {
+        drop.style.display = 'none';
+        document.removeEventListener('click', closeDrop);
+      }
+    });
+  }, 10);
+}
+
+function exportPDF(orientacao = 'retrato') {
   const lista = listaConsolidada[tabAtiva];
   const tipo = tabAtiva==='entrada'?'ENTRADA':'SAÍDA';
   const rota = tabAtiva==='entrada'?'ITAITUBA - MORAES ALMEIDA - MINA TZ':'MINA TZ - MORAES ALMEIDA - ITAITUBA';
@@ -2734,8 +2764,8 @@ function exportPDF() {
   const horaFmt = now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
   const usuario = currentProfile?.nome||'—';
   const colLabel = tabAtiva==='entrada'?'Embarque':'Desembarque';
-  const extraTh = tabAtiva==='entrada'?'<th>Alojamento</th>':'';
-  const extraTd = tabAtiva==='entrada'?'<td></td>':'';
+  const extraTh = '<th>Alojamento</th>';
+  const extraTd = '<td></td>';
   const logoSVG = `<svg id="logo_pdf" style="height:90px;width:auto;display:block" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 792 612">
   <defs>
     <style>
@@ -2771,10 +2801,11 @@ function exportPDF() {
   w.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Lista ${tipo}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:Arial,sans-serif;font-size:13px;color:#222;background:#fff}
 *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;color-adjust:exact!important}
+body{font-family:Arial,sans-serif;font-size:13px;color:#222;background:#fff}
 .header{background:#0F5C6B!important;display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
 .header-title{color:#ffffff!important;font-size:18px;font-weight:bold;text-align:center;flex:1;letter-spacing:.05em}
+.header-right{width:80px;flex-shrink:0}
 .subheader{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:8px;font-size:12px;font-weight:bold;letter-spacing:.03em}
 .meta{font-size:10px;color:#555;padding:6px 16px;text-align:right;border-bottom:1px solid #ddd}
 .av{background:#EBF5EC!important;border:1px solid #A8D5AC!important;padding:10px 14px;margin:10px 14px;font-size:9.5px;line-height:1.75;border-radius:3px}
@@ -2783,34 +2814,59 @@ body{font-family:Arial,sans-serif;font-size:13px;color:#222;background:#fff}
 table{width:100%;border-collapse:collapse;margin-top:10px;table-layout:fixed}
 thead tr{background:#0F5C6B!important}
 th{background:#0F5C6B!important;color:#ffffff!important;padding:10px 8px;text-align:left;font-size:13px;font-weight:bold;border:1px solid #0A4A57}
-th.nc{width:36px;text-align:center}
-/* Larguras das colunas */
-th:nth-child(1){width:36px}
-th:nth-child(2){width:28%}
-th:nth-child(3){width:16%}
-th:nth-child(4){width:14%}
-th:nth-child(5){width:13%}
-th:nth-child(6){width:13%}
-th:nth-child(7){width:16%}
-td{padding:9px 8px;border-bottom:2px solid #d0d0d0;font-size:13px;color:#222;overflow:hidden;text-overflow:ellipsis}
+td{padding:9px 8px;border-bottom:2px solid #d0d0d0;font-size:13px;color:#222}
 td.nc{text-align:center;font-weight:bold;color:#444;font-size:12px;background:#f0f0f0!important}
 tr:nth-child(even) td{background:#f2f2f2!important}
 tr:nth-child(odd) td{background:#ffffff!important}
 .footer{background:#C9952A!important;color:#ffffff!important;text-align:center;padding:9px;font-size:12px;font-weight:bold;margin-top:6px}
+/* RETRATO — larguras A4 vertical */
+body.retrato table{table-layout:fixed}
+body.retrato th:nth-child(1){width:36px}
+body.retrato th:nth-child(2){width:30%}
+body.retrato th:nth-child(3){width:16%}
+body.retrato th:nth-child(4){width:14%}
+body.retrato th:nth-child(5){width:13%}
+body.retrato th:nth-child(6){width:14%}
+body.retrato th:nth-child(7){width:13%}
+/* PAISAGEM — mais espaço por coluna */
+body.paisagem table{table-layout:fixed}
+body.paisagem th:nth-child(1){width:40px}
+body.paisagem th:nth-child(2){width:32%}
+body.paisagem th:nth-child(3){width:16%}
+body.paisagem th:nth-child(4){width:14%}
+body.paisagem th:nth-child(5){width:12%}
+body.paisagem th:nth-child(6){width:13%}
+body.paisagem th:nth-child(7){width:13%}
+body.paisagem .av{font-size:10px}
+body.paisagem td{font-size:13px;padding:8px 10px}
+body.paisagem th{font-size:13px;padding:10px 10px}
+/* PRINT */
 @media print{
   body{margin:0;padding:0}
-  @page{margin:8mm;size:A4 portrait}
+  @page{margin:8mm}
+  body.retrato{size:A4 portrait}
+  body.paisagem{size:A4 landscape}
+  @page{size:inherit}
   .header,.subheader,.footer,.av,thead tr,td.nc,tr:nth-child(even) td{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 </style>
-</head><body>
-<div class="header"><div class="header-logo">${logoSVG}</div><div class="header-title">LISTA DE PASSAGEIROS</div><div style="width:80px"></div></div>
+</head><body class="${orientacao}">
+<div class="header"><div class="header-logo">${logoSVG}</div><div class="header-title">LISTA DE PASSAGEIROS</div><div class="header-right"></div></div>
 <div class="subheader">${rota} | ${tipo} EM ${dataFmt}</div>
 <div class="meta">${dataFmt} - ${horaFmt} - ${usuario}</div>
 ${avisos}
 <div class="tbl-wrap"><table><thead><tr><th class="nc">N°</th><th style="width:35%">Nome</th><th>Empresa</th><th>Setor</th><th>${colLabel}</th>${extraTh}</tr></thead><tbody>${rows}</tbody></table></div>
 <div class="footer">Boa viagem!</div></body></html>`);
-  w.document.close(); setTimeout(()=>w.print(),800);
+  // Injetar @page correto via JS antes de imprimir
+  w.document.close();
+  setTimeout(()=>{
+    const pageStyle = w.document.createElement('style');
+    pageStyle.textContent = orientacao === 'paisagem'
+      ? '@page{size:A4 landscape;margin:8mm}'
+      : '@page{size:A4 portrait;margin:8mm}';
+    w.document.head.appendChild(pageStyle);
+    w.print();
+  }, 800);
 }
 
 // ============================================================
