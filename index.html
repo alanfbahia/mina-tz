@@ -378,7 +378,7 @@ tr.drag-over{border-top:2px solid var(--green)!important}
   </g>
 </svg>
       </div>
-      <div class="sb-sub">Passageiros v4.2</div>
+      <div class="sb-sub">Passageiros v4.3</div>
     </div>
     <nav class="sb-nav">
       <div class="nav-group">Principal</div>
@@ -2287,14 +2287,20 @@ async function submitLista() {
   if (!selecionadas.length) { showAlert('submitAlert','blue','Selecione pelo menos uma pessoa.'); return; }
   if (!dataViagem) { showAlert('submitAlert','blue','Selecione a data.'); return; }
 
-  // Verificar prazo de 48 horas (bloqueia apenas usuários de setor)
+  // Verificar prazo (bloqueia apenas usuários de setor)
   if (!prazoOk(dataViagem)) {
     const diasViagem = new Date(dataViagem + 'T00:00:00').toLocaleDateString('pt-BR');
-    const prazoLimite = new Date(new Date(dataViagem + 'T00:00:00') - 48*3600000).toLocaleDateString('pt-BR');
-    showAlert('submitAlert','red',
-      `⏰ Prazo encerrado para ${diasViagem}. As listas deveriam ter sido enviadas até ${prazoLimite} (48h de antecedência). ` +
-      `Entre em contato com o <strong>Site Services</strong> para inclusões fora do prazo.`
-    );
+    const dias = diasAteFim(dataViagem);
+    let msg = '';
+    if (dias > 2) {
+      const maxData = new Date(); maxData.setDate(maxData.getDate() + 2);
+      msg = `⏰ Data não permitida. Você pode programar listas para no máximo ${maxData.toLocaleDateString('pt-BR')} (2 dias à frente). Entre em contato com o Site Services.`;
+    } else {
+      const viagem = new Date(dataViagem + 'T00:00:00');
+      const limite = new Date(viagem); limite.setDate(limite.getDate() - 1);
+      msg = `⏰ Prazo encerrado para ${diasViagem}. O prazo era até ${limite.toLocaleDateString('pt-BR')} às 17h. Entre em contato com o Site Services.`;
+    }
+    showAlert('submitAlert','red', msg);
     return;
   }
 
@@ -2564,17 +2570,34 @@ function switchTab(tab, el) {
 // ============================================================
 // REGRA DE PRAZO — 48 HORAS
 // ============================================================
-function calcHorasAteViagem(dataViagem) {
-  // Diferença em horas entre agora e meia-noite do dia da viagem
-  const agora = new Date();
+// ── REGRAS DE PRAZO ──────────────────────────────────────────────
+// Setor pode enviar para hoje, amanhã e depois de amanhã (máx +2 dias)
+// Prazo encerra às 17h do dia ANTERIOR à viagem
+// Masters e Proprietário: sem restrição
+
+function diasAteFim(dataViagem) {
+  // Retorna quantos dias inteiros faltam a partir de hoje (sem hora)
+  const hoje = new Date(); hoje.setHours(0,0,0,0);
   const viagem = new Date(dataViagem + 'T00:00:00');
-  return (viagem - agora) / (1000 * 60 * 60);
+  return Math.floor((viagem - hoje) / (1000 * 60 * 60 * 24));
+}
+
+function prazoEncerrado(dataViagem) {
+  // Prazo encerra às 17h do dia anterior à viagem
+  const viagem = new Date(dataViagem + 'T00:00:00');
+  const limite = new Date(viagem);
+  limite.setDate(limite.getDate() - 1);
+  limite.setHours(17, 0, 0, 0);
+  return new Date() > limite;
 }
 
 function prazoOk(dataViagem) {
-  // Setor: precisa de 48h. Master/Proprietário: sem restrição
-  if (isMasterOrOwner()) return true;
-  return calcHorasAteViagem(dataViagem) >= 48;
+  if (isMasterOrOwner() || isAnalista()) return true;
+  const dias = diasAteFim(dataViagem);
+  if (dias < 0) return false;          // passado
+  if (dias > 2) return false;          // além de +2 dias
+  if (prazoEncerrado(dataViagem)) return false; // depois das 17h do dia anterior
+  return true;
 }
 
 function verificarPrazo() {
@@ -2582,11 +2605,12 @@ function verificarPrazo() {
   const alertEl = document.getElementById('alertaPrazo');
   if (!data || !alertEl) return;
 
-  const horas = calcHorasAteViagem(data);
-  const master = isMasterOrOwner();
+  const master = isMasterOrOwner() || isAnalista();
+  const dias = diasAteFim(data);
+  const diasViagem = new Date(data + 'T00:00:00').toLocaleDateString('pt-BR');
 
-  if (horas < 0) {
-    // Data no passado
+  // Data no passado
+  if (dias < 0) {
     alertEl.style.display = 'block';
     alertEl.innerHTML = `<div class="alert red" style="font-size:12px;padding:8px 12px">
       <strong>Data no passado.</strong> Selecione uma data futura.
@@ -2594,28 +2618,46 @@ function verificarPrazo() {
     return;
   }
 
-  if (!master && horas < 48) {
-    // Prazo encerrado para setor
-    const diasViagem = new Date(data + 'T00:00:00').toLocaleDateString('pt-BR');
-    const prazoLimite = new Date(new Date(data + 'T00:00:00') - 48*3600000).toLocaleDateString('pt-BR');
-    alertEl.style.display = 'block';
-    alertEl.innerHTML = `<div class="alert red" style="font-size:12px;padding:8px 12px">
-      <svg style="width:13px;height:13px;stroke:var(--red);fill:none;stroke-width:2;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <strong>Prazo encerrado.</strong> As listas para <strong>${diasViagem}</strong> deveriam ter sido enviadas até <strong>${prazoLimite}</strong>.
-      Entre em contato com o <strong>Site Services</strong> para inclusões fora do prazo.
-    </div>`;
-    return;
-  }
+  if (!master) {
+    // Além de 2 dias no futuro
+    if (dias > 2) {
+      const maxData = new Date(); maxData.setDate(maxData.getDate() + 2);
+      const maxFmt = maxData.toLocaleDateString('pt-BR');
+      alertEl.style.display = 'block';
+      alertEl.innerHTML = `<div class="alert red" style="font-size:12px;padding:8px 12px">
+        <svg style="width:13px;height:13px;stroke:var(--red);fill:none;stroke-width:2;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <strong>Data não permitida.</strong> Você pode programar listas para no máximo <strong>${maxFmt}</strong> (2 dias à frente). Entre em contato com o <strong>Site Services</strong> para datas além desse período.
+      </div>`;
+      return;
+    }
 
-  if (!master && horas < 72) {
-    // Aviso: prazo próximo (menos de 72h = menos de 24h de margem antes das 48h)
-    const horasRestantes = Math.floor(horas - 48);
-    alertEl.style.display = 'block';
-    alertEl.innerHTML = `<div class="alert amber" style="font-size:12px;padding:8px 12px">
-      <svg style="width:13px;height:13px;stroke:var(--amber);fill:none;stroke-width:2;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-      <strong>Atenção:</strong> Faltam menos de ${horasRestantes}h para o prazo encerrar. Envie sua lista o quanto antes!
-    </div>`;
-    return;
+    // Prazo encerrado (passou das 17h do dia anterior)
+    if (prazoEncerrado(data)) {
+      const viagem = new Date(data + 'T00:00:00');
+      const limiteData = new Date(viagem); limiteData.setDate(limiteData.getDate() - 1);
+      const limiteFmt = limiteData.toLocaleDateString('pt-BR');
+      alertEl.style.display = 'block';
+      alertEl.innerHTML = `<div class="alert red" style="font-size:12px;padding:8px 12px">
+        <svg style="width:13px;height:13px;stroke:var(--red);fill:none;stroke-width:2;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        <strong>Prazo encerrado.</strong> As listas para <strong>${diasViagem}</strong> deveriam ter sido enviadas até <strong>${limiteFmt} às 17h</strong>. Entre em contato com o <strong>Site Services</strong> para inclusões fora do prazo.
+      </div>`;
+      return;
+    }
+
+    // Aviso: faltam poucas horas para o prazo (prazo hoje às 17h)
+    if (dias <= 1) {
+      const viagem = new Date(data + 'T00:00:00');
+      const limite = new Date(viagem); limite.setDate(limite.getDate() - 1); limite.setHours(17,0,0,0);
+      const horasRestantes = Math.max(0, Math.floor((limite - new Date()) / 3600000));
+      if (horasRestantes > 0) {
+        alertEl.style.display = 'block';
+        alertEl.innerHTML = `<div class="alert amber" style="font-size:12px;padding:8px 12px">
+          <svg style="width:13px;height:13px;stroke:var(--amber);fill:none;stroke-width:2;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <strong>Atenção:</strong> O prazo para esta data encerra hoje às 17h. Você tem aproximadamente <strong>${horasRestantes}h</strong> para enviar.
+        </div>`;
+        return;
+      }
+    }
   }
 
   // Tudo ok
