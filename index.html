@@ -474,7 +474,11 @@ table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
             <div class="card-title">Informações da viagem</div>
             <div class="form-grid">
               <div class="fg"><label>Setor</label><select class="fs" id="fSetor" onchange="onSetorChange()"></select></div>
-              <div class="fg"><label>Data</label><input class="fi" type="date" id="fData"></div>
+              <div class="fg">
+                <label>Data da viagem</label>
+                <input class="fi" type="date" id="fData" onchange="verificarPrazo()">
+                <div id="alertaPrazo" style="margin-top:6px;display:none"></div>
+              </div>
               <div class="fg"><label>Tipo de transporte</label>
                 <select class="fs" id="fTransporte" onchange="onTranspChange()">
                   <option value="onibus">🚌 Ônibus</option>
@@ -2016,7 +2020,7 @@ function goPage(id, el) {
   if (id==='consolidado') loadConsolidado();
   if (id==='usuarios') loadUsuarios();
   if (id==='locais') renderLocais();
-  if (id==='preencher') loadMinhasListas();
+  if (id==='preencher') { loadMinhasListas(); setTimeout(verificarPrazo, 100); }
 }
 
 // ============================================================
@@ -2184,6 +2188,17 @@ async function submitLista() {
 
   if (!selecionadas.length) { showAlert('submitAlert','blue','Selecione pelo menos uma pessoa.'); return; }
   if (!dataViagem) { showAlert('submitAlert','blue','Selecione a data.'); return; }
+
+  // Verificar prazo de 48 horas (bloqueia apenas usuários de setor)
+  if (!prazoOk(dataViagem)) {
+    const diasViagem = new Date(dataViagem + 'T00:00:00').toLocaleDateString('pt-BR');
+    const prazoLimite = new Date(new Date(dataViagem + 'T00:00:00') - 48*3600000).toLocaleDateString('pt-BR');
+    showAlert('submitAlert','red',
+      `⏰ Prazo encerrado para ${diasViagem}. As listas deveriam ter sido enviadas até ${prazoLimite} (48h de antecedência). ` +
+      `Entre em contato com o <strong>Site Services</strong> para inclusões fora do prazo.`
+    );
+    return;
+  }
 
   // Verificar limite de 80 pessoas por lista
   const LIMITE_LISTA = 80;
@@ -2379,6 +2394,68 @@ function switchTab(tab, el) {
   document.querySelectorAll('.tab-bar .tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   renderConsolidado();
+}
+
+// ============================================================
+// REGRA DE PRAZO — 48 HORAS
+// ============================================================
+function calcHorasAteViagem(dataViagem) {
+  // Diferença em horas entre agora e meia-noite do dia da viagem
+  const agora = new Date();
+  const viagem = new Date(dataViagem + 'T00:00:00');
+  return (viagem - agora) / (1000 * 60 * 60);
+}
+
+function prazoOk(dataViagem) {
+  // Setor: precisa de 48h. Master/Proprietário: sem restrição
+  if (isMasterOrOwner()) return true;
+  return calcHorasAteViagem(dataViagem) >= 48;
+}
+
+function verificarPrazo() {
+  const data = document.getElementById('fData').value;
+  const alertEl = document.getElementById('alertaPrazo');
+  if (!data || !alertEl) return;
+
+  const horas = calcHorasAteViagem(data);
+  const master = isMasterOrOwner();
+
+  if (horas < 0) {
+    // Data no passado
+    alertEl.style.display = 'block';
+    alertEl.innerHTML = `<div class="alert red" style="font-size:12px;padding:8px 12px">
+      <strong>Data no passado.</strong> Selecione uma data futura.
+    </div>`;
+    return;
+  }
+
+  if (!master && horas < 48) {
+    // Prazo encerrado para setor
+    const diasViagem = new Date(data + 'T00:00:00').toLocaleDateString('pt-BR');
+    const prazoLimite = new Date(new Date(data + 'T00:00:00') - 48*3600000).toLocaleDateString('pt-BR');
+    alertEl.style.display = 'block';
+    alertEl.innerHTML = `<div class="alert red" style="font-size:12px;padding:8px 12px">
+      <svg style="width:13px;height:13px;stroke:var(--red);fill:none;stroke-width:2;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <strong>Prazo encerrado.</strong> As listas para <strong>${diasViagem}</strong> deveriam ter sido enviadas até <strong>${prazoLimite}</strong>.
+      Entre em contato com o <strong>Site Services</strong> para inclusões fora do prazo.
+    </div>`;
+    return;
+  }
+
+  if (!master && horas < 72) {
+    // Aviso: prazo próximo (menos de 72h = menos de 24h de margem antes das 48h)
+    const horasRestantes = Math.floor(horas - 48);
+    alertEl.style.display = 'block';
+    alertEl.innerHTML = `<div class="alert amber" style="font-size:12px;padding:8px 12px">
+      <svg style="width:13px;height:13px;stroke:var(--amber);fill:none;stroke-width:2;vertical-align:middle;margin-right:4px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <strong>Atenção:</strong> Faltam menos de ${horasRestantes}h para o prazo encerrar. Envie sua lista o quanto antes!
+    </div>`;
+    return;
+  }
+
+  // Tudo ok
+  alertEl.style.display = 'none';
+  alertEl.innerHTML = '';
 }
 
 function embaralhar() {
@@ -2871,6 +2948,12 @@ async function loadMinhasListas() {
 }
 
 async function removerPassageiro(paxId, listaId) {
+  // Verificar prazo — buscar data da lista
+  const { data: lista } = await sb.from('listas').select('data_viagem').eq('id', listaId).single();
+  if (lista && !prazoOk(lista.data_viagem)) {
+    alert('⏰ Prazo encerrado. Não é possível alterar esta lista. Entre em contato com o Site Services.');
+    return;
+  }
   if (!confirm('Remover este passageiro da lista?')) return;
   const { error } = await sb.from('passageiros').delete().eq('id', paxId);
   if (error) { alert('Erro ao remover: ' + error.message); return; }
@@ -2879,6 +2962,12 @@ async function removerPassageiro(paxId, listaId) {
 }
 
 async function cancelarLista(listaId) {
+  // Verificar prazo
+  const { data: lista } = await sb.from('listas').select('data_viagem').eq('id', listaId).single();
+  if (lista && !prazoOk(lista.data_viagem)) {
+    alert('⏰ Prazo encerrado. Não é possível cancelar esta lista. Entre em contato com o Site Services.');
+    return;
+  }
   if (!confirm('Cancelar toda esta lista? Todos os passageiros serão removidos.')) return;
   await sb.from('passageiros').delete().eq('lista_id', listaId);
   await sb.from('listas').delete().eq('id', listaId);
