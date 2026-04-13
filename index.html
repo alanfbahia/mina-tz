@@ -112,6 +112,13 @@ table.tbl td{padding:9px 12px;border-bottom:1px solid var(--border);color:var(--
 table.tbl tr:last-child td{border-bottom:none}
 table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
 .num-cell{font-family:var(--mono);font-weight:600;color:var(--text2);font-size:12px}
+.drag-handle{cursor:grab;color:var(--text3);padding:0 6px;font-size:16px;user-select:none;display:inline-block}
+.drag-handle:active{cursor:grabbing}
+.pos-input{width:42px;text-align:center;background:var(--bg3);border:1px solid var(--border2);border-radius:4px;color:var(--text);font-family:var(--mono);font-size:12px;font-weight:600;padding:3px 4px}
+.pos-input:focus{outline:none;border-color:var(--blue-border)}
+tr.dragging{opacity:0.4;background:var(--green-bg)!important}
+tr.drag-over{border-top:2px solid var(--green)!important}
+.tbl-sortable tbody tr{transition:background .1s}
 
 /* TAGS */
 .tag{display:inline-flex;align-items:center;font-size:11px;padding:3px 8px;border-radius:999px;font-weight:500;font-family:var(--mono);white-space:nowrap}
@@ -577,8 +584,8 @@ table.tbl tr:hover td{background:rgba(255,255,255,0.02)}
         </div>
         <div class="card">
           <div class="tbl-wrap">
-            <table class="tbl">
-              <thead><tr><th style="width:40px">N°</th><th>Nome</th><th>Empresa</th><th>Setor</th><th>Embarque/Desembarque</th><th>Transporte</th></tr></thead>
+            <table class="tbl tbl-sortable" id="tblCons">
+              <thead><tr id="theadCons"><th style="width:50px">N°</th><th>Nome</th><th>Empresa</th><th>Setor</th><th>Embarque/Desembarque</th><th>Transporte</th></tr></thead>
               <tbody id="tbCons"><tr><td colspan="6" style="color:var(--text3);text-align:center;padding:24px">Selecione uma data</td></tr></tbody>
             </table>
           </div>
@@ -2362,32 +2369,99 @@ function renderConsolidado() {
   document.getElementById('cntEnt').textContent = listaConsolidada.entrada.length;
   document.getElementById('cntSai').textContent = listaConsolidada.saida.length;
 
-  // Coluna extra de ações para master
-  const extraTh = master ? '<th style="width:70px"></th>' : '';
-  const thead = document.getElementById('tbCons').closest('table')?.querySelector('thead tr');
+  const thead = document.getElementById('theadCons');
   if (thead) {
-    if (master && !thead.querySelector('.th-acoes')) {
-      const th = document.createElement('th');
-      th.className = 'th-acoes';
-      th.style.width = '70px';
-      thead.appendChild(th);
-    } else if (!master) {
-      thead.querySelector('.th-acoes')?.remove();
+    thead.querySelectorAll('.th-drag,.th-acoes').forEach(el=>el.remove());
+    if (master) {
+      const thDrag = document.createElement('th');
+      thDrag.className = 'th-drag';
+      thDrag.style.cssText = 'width:30px';
+      thead.insertBefore(thDrag, thead.firstChild);
+      const thAcoes = document.createElement('th');
+      thAcoes.className = 'th-acoes';
+      thAcoes.style.cssText = 'width:80px';
+      thead.appendChild(thAcoes);
     }
   }
 
-  document.getElementById('tbCons').innerHTML = lista.length
-    ? lista.map((p,i) => `<tr>
-        <td class="num-cell">${i+1}</td>
-        <td>${p.nome}</td>
-        <td style="color:var(--text2)">${p.empresa}</td>
-        <td>${p.setor}</td>
-        <td class="mono" style="font-size:12px">${p.local}</td>
-        <td><span class="tag ${p.transporte==='Charter'?'amber':'gray'}">${p.transporte}</span></td>
-        ${master ? `<td><button class="btn sm red" style="padding:3px 8px;font-size:11px" onclick="deletarDaConsolidada('${p.id||''}','${(p.nome||'').replace(/'/g,"\\'")}')">Remover</button></td>` : ''}
-      </tr>`).join('')
-    : `<tr><td colspan="${master?7:6}" style="color:var(--text3);text-align:center;padding:24px">Nenhum passageiro</td></tr>`;
+  const tbody = document.getElementById('tbCons');
+  if (!lista.length) {
+    tbody.innerHTML = `<tr><td colspan="${master?8:6}" style="color:var(--text3);text-align:center;padding:24px">Nenhum passageiro</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = lista.map((p,i) => {
+    const nomeSafe = (p.nome||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const idSafe = p.id||'';
+    return `<tr data-idx="${i}">
+      ${master ? `<td style="width:30px;text-align:center"><span class="drag-handle" title="Arraste para reposicionar">⠿</span></td>` : ''}
+      <td class="num-cell" style="width:50px">
+        ${master
+          ? `<input class="pos-input" type="number" min="1" max="${lista.length}" value="${i+1}"
+              title="Digite a posição e pressione Enter"
+              onkeydown="if(event.key==='Enter'){moverParaPosicao(this,${i});this.blur()}"
+              onblur="moverParaPosicao(this,${i})">`
+          : i+1}
+      </td>
+      <td>${p.nome}</td>
+      <td style="color:var(--text2)">${p.empresa}</td>
+      <td>${p.setor}</td>
+      <td class="mono" style="font-size:12px">${p.local}</td>
+      <td><span class="tag ${p.transporte==='Charter'?'amber':'gray'}">${p.transporte}</span></td>
+      ${master ? `<td><button class="btn sm red" style="padding:3px 8px;font-size:11px"
+          onclick="deletarDaConsolidada('${idSafe}','${nomeSafe}')">Remover</button></td>` : ''}
+    </tr>`;
+  }).join('');
+
+  if (master) iniciarDragDrop();
 }
+
+// ── DRAG AND DROP ──────────────────────────────────────────────────
+let dragSrcIdx = null;
+
+function iniciarDragDrop() {
+  document.querySelectorAll('#tbCons tr[data-idx]').forEach(tr => {
+    tr.setAttribute('draggable','true');
+    tr.ondragstart = (e) => {
+      dragSrcIdx = parseInt(tr.dataset.idx);
+      tr.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+    };
+    tr.ondragover = (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      document.querySelectorAll('#tbCons tr').forEach(r=>r.classList.remove('drag-over'));
+      tr.classList.add('drag-over');
+    };
+    tr.ondrop = (e) => {
+      e.preventDefault();
+      const targetIdx = parseInt(tr.dataset.idx);
+      if (dragSrcIdx === null || dragSrcIdx === targetIdx) return;
+      const lista = listaConsolidada[tabAtiva];
+      const item = lista.splice(dragSrcIdx, 1)[0];
+      lista.splice(targetIdx, 0, item);
+      dragSrcIdx = null;
+      renderConsolidado();
+    };
+    tr.ondragend = () => {
+      dragSrcIdx = null;
+      document.querySelectorAll('#tbCons tr').forEach(r=>r.classList.remove('dragging','drag-over'));
+    };
+  });
+}
+
+// ── CAMPO DE POSIÇÃO NUMÉRICA ──────────────────────────────────────
+function moverParaPosicao(input, idxAtual) {
+  const lista = listaConsolidada[tabAtiva];
+  let novaPos = parseInt(input.value) - 1;
+  if (isNaN(novaPos)) { input.value = idxAtual + 1; return; }
+  novaPos = Math.max(0, Math.min(lista.length - 1, novaPos));
+  if (novaPos === idxAtual) { input.value = idxAtual + 1; return; }
+  const item = lista.splice(idxAtual, 1)[0];
+  lista.splice(novaPos, 0, item);
+  renderConsolidado();
+}
+
 
 function switchTab(tab, el) {
   tabAtiva = tab;
